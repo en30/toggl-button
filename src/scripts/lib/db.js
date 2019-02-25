@@ -233,12 +233,12 @@ export default class Db {
       .then((result) => {
         let value = result[setting];
         if (value) {
-          // This is kept around to ensure older version's settings still function.
+          // Ensure older version's settings still function if they get saved to sync storage.
           if (value === 'false' || value === 'true') {
             value = JSON.parse(value);
           }
         }
-        return value;
+        return value || null;
       });
   }
 
@@ -248,13 +248,16 @@ export default class Db {
 
   async load (setting, defaultValue) {
     let value = await this.get(setting);
-    if (value) {
-      if (typeof defaultValue === 'boolean') {
+
+    // Attempt to migrate from old localStorage settings.
+    if (value === null) {
+      value = localStorage.getItem(setting);
+      if (value && typeof defaultValue === 'boolean') {
         value = JSON.parse(value);
       }
-    } else {
-      value = defaultValue;
     }
+
+    value = value || defaultValue;
     this.set(setting, value);
     return value;
   }
