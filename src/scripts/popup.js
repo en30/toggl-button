@@ -96,7 +96,7 @@ window.PopUp = {
   },
 
   sendMessage: function (request) {
-    chrome.runtime.sendMessage(request, function (response) {
+    chrome.runtime.sendMessage(request, async function (response) {
       if (!response) {
         return;
       }
@@ -113,10 +113,11 @@ window.PopUp = {
         if (request.type === 'create-workspace') {
           return PopUp.switchView(PopUp.$menuView);
         }
+        const showPostPopup = await Db.get('showPostPopup');
         if (
           !!response.type &&
           response.type === 'New Entry' &&
-          Db.get('showPostPopup')
+          showPostPopup
         ) {
           PopUp.updateEditForm(PopUp.$editView);
         } else if (response.type === 'Update') {
