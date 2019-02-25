@@ -21,21 +21,25 @@ export default class Ga {
 
   report(event, service) {
     if (!db.get('sendUsageStatistics')) return;
+    db.get('sendUsageStatistics')
+      .then((sendUsageStatistics) => {
+        if (!!sendUsageStatistics) {
+          var request = new XMLHttpRequest(),
+            message =
+              'v=1&tid=' +
+              process.env.GA_TRACKING_ID +
+              '&cid=' +
+              this.clientId +
+              '&aip=1' +
+              '&ds=extension&t=event&ec=' +
+              event +
+              '&ea=' +
+              service;
 
-    var request = new XMLHttpRequest(),
-      message =
-        'v=1&tid=' +
-        process.env.GA_TRACKING_ID +
-        '&cid=' +
-        this.clientId +
-        '&aip=1' +
-        '&ds=extension&t=event&ec=' +
-        event +
-        '&ea=' +
-        service;
-
-    request.open('POST', 'https://www.google-analytics.com/collect', true);
-    request.send(message);
+          request.open('POST', 'https://www.google-analytics.com/collect', true);
+          request.send(message);
+        }
+      });
   }
 
   reportEvent(event, service) {
@@ -50,6 +54,7 @@ export default class Ga {
   }
 
   reportSettings(event, service) {
+    return;
     this.report(
       'start-automatically',
       'settings/start-automatically-' + this.db.get('startAutomatically')
