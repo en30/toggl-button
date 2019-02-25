@@ -150,8 +150,8 @@ window.TogglButton = {
             }
 
             TogglButton.updateTriggers(entry);
-            db.set('projects', JSON.stringify(projectMap));
-            db.set('clients', JSON.stringify(clientMap));
+            db.set('projects', projectMap);
+            db.set('clients', clientMap);
             TogglButton.$user = resp.data;
             TogglButton.$user.projectMap = projectMap;
             TogglButton.$user.clientMap = clientMap;
@@ -319,10 +319,10 @@ window.TogglButton = {
     TogglButton.setBrowserAction(entry);
   },
 
-  updateCurrentEntry: function (data) {
+  updateCurrentEntry: async function (data) {
     let entry = data.data;
-    const defaultProject = db.getDefaultProject();
-    const rememberProjectPer = db.get('rememberProjectPer');
+    const defaultProject = await db.getDefaultProject();
+    const rememberProjectPer = await db.get('rememberProjectPer');
     /**
      * setDefaultProject parameters are (pid, scope). So the logic goes:
      * If we wan't to remember the project specifically for a given scope (from settings),
@@ -435,12 +435,12 @@ window.TogglButton = {
     return undefined;
   },
 
-  createTimeEntry: function (timeEntry, sendResponse) {
+  createTimeEntry: async function (timeEntry, sendResponse) {
     const type = timeEntry.type;
     const start = new Date();
-    let defaultProject = db.getDefaultProject();
-    const rememberProjectPer = db.get('rememberProjectPer');
-    const enableAutoTagging = db.get('enableAutoTagging');
+    let defaultProject = await db.getDefaultProject();
+    const rememberProjectPer = await db.get('rememberProjectPer');
+    const enableAutoTagging = await db.get('enableAutoTagging');
     let entry;
     let error = '';
     let project;
@@ -449,7 +449,7 @@ window.TogglButton = {
     TogglButton.$curURL = (timeEntry || {}).url;
 
     if (rememberProjectPer) {
-      defaultProject = db.getDefaultProject(
+      defaultProject = await db.getDefaultProject(
         rememberProjectPer === 'service'
           ? TogglButton.$curService
           : TogglButton.$curURL
@@ -498,7 +498,7 @@ window.TogglButton = {
       method: 'POST',
       payload: entry,
       baseUrl: TogglButton.$ApiV9Url,
-      onLoad: function (xhr) {
+      onLoad: async function (xhr) {
         const hasTasks =
             !!TogglButton.$user && !!TogglButton.$user.projectTaskList;
 
@@ -518,7 +518,7 @@ window.TogglButton = {
               success: success,
               type: 'New Entry',
               entry: entry,
-              showPostPopup: db.get('showPostPopup'),
+              showPostPopup: await db.get('showPostPopup'),
               html: TogglButton.getEditForm(),
               hasTasks: hasTasks,
               error: error
@@ -543,22 +543,25 @@ window.TogglButton = {
     });
   },
 
-  checkPomodoroAlarm: function (entry) {
+  checkPomodoroAlarm: async function (entry) {
     const duration = new Date() - new Date(entry.start);
-    const interval = parseInt(db.get('pomodoroInterval'), 10) * 60000;
+    const pomodoroInterval = await db.get('pomodoroInterval');
+    const interval = parseInt(pomodoroInterval, 10) * 60000;
     if (duration < interval) {
       TogglButton.triggerPomodoroAlarm(interval - duration);
     }
   },
 
-  triggerPomodoroAlarm: function (value) {
+  triggerPomodoroAlarm: async function (value) {
     if (TogglButton.pomodoroAlarm !== null) {
       clearTimeout(TogglButton.pomodoroAlarm);
       TogglButton.pomodoroAlarm = null;
       clearInterval(TogglButton.pomodoroProgressTimer);
     }
-    if (db.get('pomodoroModeEnabled')) {
-      const pomodoroInterval = parseInt(db.get('pomodoroInterval'), 10) * 60000;
+    const pomodoroModeEnabled = await db.get('pomodoroModeEnabled');
+    if (pomodoroModeEnabled) {
+      const intervalSetting = await db.get('pomodoroInterval');
+      const pomodoroInterval = parseInt(intervalSetting, 10) * 60000;
       const interval = value || pomodoroInterval;
       const steps = 120;
       const elapsedTime = (pomodoroInterval - interval) / pomodoroInterval;
@@ -582,7 +585,7 @@ window.TogglButton = {
   updatePomodoroProgress: function (interval, steps, elapsedTime) {
     let current = 0;
     let intervalCount = 0;
-    return function () {
+    return async function () {
       let key;
       let img;
       const imagePaths = {
@@ -633,7 +636,8 @@ window.TogglButton = {
       intervalCount += interval / steps;
       current = intervalCount / interval + elapsedTime;
 
-      if (db.get('pomodoroModeEnabled')) {
+      const pomodoroModeEnabled = await db.get('pomodoroModeEnabled');
+      if (pomodoroModeEnabled) {
         for (key in imagePaths) {
           if (imagePaths.hasOwnProperty(key)) {
             img = new Image();
@@ -700,8 +704,9 @@ window.TogglButton = {
     TogglButton.updateTriggers(entry);
   },
 
-  stopTimeEntryPomodoro: function (timeEntry, sendResponse, cb) {
-    const pomodoroDuration = parseInt(db.get('pomodoroInterval'), 10) * 60;
+  stopTimeEntryPomodoro: async function (timeEntry, sendResponse, cb) {
+    const pomodoroInterval = await db.get('pomodoroInterval');
+    const pomodoroDuration = parseInt(pomodoroInterval, 10) * 60;
 
     if (!TogglButton.$curEntry) {
       return;
@@ -802,8 +807,9 @@ window.TogglButton = {
     );
   },
 
-  pomodoroStopTimeTracking: function () {
-    if (db.get('pomodoroStopTimeTrackingWhenTimerEnds')) {
+  pomodoroStopTimeTracking: async function () {
+    const pomodoroStopTimeTrackingWhenTimerEnds = await db.get('pomodoroStopTimeTrackingWhenTimerEnds');
+    if (pomodoroStopTimeTrackingWhenTimerEnds) {
       TogglButton.stopTimeEntryPomodoro({
         type: 'pomodoro-stop',
         service: 'dropdown'
@@ -813,8 +819,9 @@ window.TogglButton = {
     }
   },
 
-  pomodoroAlarmStop: function () {
-    if (!db.get('pomodoroModeEnabled')) {
+  pomodoroAlarmStop: async function () {
+    const pomodoroModeEnabled = await db.get('pomodoroModeEnabled');
+    if (!pomodoroModeEnabled) {
       return;
     }
 
@@ -830,7 +837,8 @@ window.TogglButton = {
 
     TogglButton.pomodoroStopTimeTracking();
 
-    if (!db.get('pomodoroStopTimeTrackingWhenTimerEnds')) {
+    const pomodoroStopTimeTrackingWhenTimerEnds = await db.get('pomodoroStopTimeTrackingWhenTimerEnds');
+    if (!pomodoroStopTimeTrackingWhenTimerEnds) {
       notificationId = 'pomodoro-time-is-up-dont-stop';
       topButtonTitle = 'Stop timer';
       bottomButtonTitle = 'Stop and Start New';
@@ -851,7 +859,8 @@ window.TogglButton = {
         { title: bottomButtonTitle }
       ];
     } else {
-      if (!db.get('pomodoroStopTimeTrackingWhenTimerEnds')) {
+      const pomodoroStopTimeTrackingWhenTimerEnds = await db.get('pomodoroStopTimeTrackingWhenTimerEnds');
+      if (!pomodoroStopTimeTrackingWhenTimerEnds) {
         options.message += '. Click to stop tracking.';
       } else {
         options.message += '. Click to continue tracking.';
@@ -863,10 +872,13 @@ window.TogglButton = {
 
     });
 
-    if (db.get('pomodoroSoundEnabled')) {
+    const pomodoroSoundEnabled = await db.get('pomodoroSoundEnabled');
+    if (pomodoroSoundEnabled) {
+      const pomodoroSoundFile = await db.get('pomodoroSoundFile');
+      const pomodoroSoundVolume = await db.get('pomodoroSoundVolume');
       stopSound = new Audio();
-      stopSound.src = db.get('pomodoroSoundFile');
-      stopSound.volume = db.get('pomodoroSoundVolume');
+      stopSound.src = pomodoroSoundFile;
+      stopSound.volume = pomodoroSoundVolume;
       stopSound.play();
     }
 
@@ -1261,10 +1273,11 @@ window.TogglButton = {
    * Start checking whether the user is 'active', 'idle' or 'locked' for the
    * discard time notification.
    */
-  startCheckingUserState: function () {
+  startCheckingUserState: async function () {
+    const idleDetectionEnabled = await db.get('idleDetectionEnabled');
     if (
       !TogglButton.$checkingState &&
-      db.get('idleDetectionEnabled') &&
+      idleDetectionEnabled &&
       TogglButton.$curEntry
     ) {
       TogglButton.$checkingUserState = setTimeout(function () {
@@ -1361,7 +1374,7 @@ window.TogglButton = {
     chrome.idle.queryState(15, TogglButton.checkActivity);
   },
 
-  checkActivity: function (currentState) {
+  checkActivity: async function (currentState) {
     let secondTitle = 'Open toggl.com';
     let options;
 
@@ -1376,10 +1389,11 @@ window.TogglButton = {
         'Continue (' + TogglButton.$latestStoppedEntry.description + ')';
     }
 
+    const nannyCheckEnabled = await db.get('nannyCheckEnabled');
     if (
       TogglButton.$user &&
       currentState === 'active' &&
-      db.get('nannyCheckEnabled') &&
+      nannyCheckEnabled &&
       TogglButton.$curEntry === null &&
       TogglButton.workingTime()
     ) {
@@ -1412,10 +1426,11 @@ window.TogglButton = {
     }
   },
 
-  checkWorkDayEnd: function () {
+  checkWorkDayEnd: async function () {
+    const stopAtDayEnd = await db.get('stopAtDayEnd');
     if (
       TogglButton.$user &&
-      db.get('stopAtDayEnd') &&
+      stopAtDayEnd &&
       TogglButton.$curEntry &&
       TogglButton.workdayEnded()
     ) {
@@ -1450,11 +1465,12 @@ window.TogglButton = {
     }
   },
 
-  workdayEnded: function () {
+  workdayEnded: async function () {
     const startedTime = new Date(TogglButton.$curEntry.start);
     const now = new Date();
     const endTime = new Date();
-    const endTimeHelper = db.get('dayEndTime').split(':');
+    const dayEndTime = await db.get('dayEndTime');
+    const endTimeHelper = dayEndTime.split(':');
 
     endTime.setHours(endTimeHelper[0]);
     endTime.setMinutes(endTimeHelper[1]);
@@ -1551,9 +1567,10 @@ window.TogglButton = {
     ga.reportEvent(eventType, buttonName);
   },
 
-  workingTime: function () {
+  workingTime: async function () {
     const now = new Date();
-    const fromTo = db.get('nannyFromTo').split('-');
+    const nannyFromTo = await db.get('nannyFromTo');
+    const fromTo = nannyFromTo.split('-');
 
     if (now.getDay() === 6 || now.getDay() === 0) {
       return false;
@@ -1569,12 +1586,13 @@ window.TogglButton = {
     return now > start && now <= end;
   },
 
-  setNannyTimer: function () {
+  setNannyTimer: async function () {
     if (TogglButton.$nannyTimer === null && TogglButton.$curEntry === null) {
       TogglButton.hideNotification('remind-to-track-time');
+      const nannyInterval = await db.get('nannyInterval');
       TogglButton.$nannyTimer = setTimeout(
         TogglButton.checkState,
-        db.get('nannyInterval')
+        nannyInterval
       );
     }
   },
@@ -1887,13 +1905,14 @@ window.TogglButton = {
     }
   },
 
-  startAutomatically: function () {
+  startAutomatically: async function () {
+    const startAutomatically = await db.get('startAutomatically');
     if (
       !TogglButton.$curEntry &&
-      db.get('startAutomatically') &&
+      startAutomatically &&
       !!TogglButton.$user
     ) {
-      const lastEntryString = db.get('latestStoppedEntry');
+      const lastEntryString = await db.get('latestStoppedEntry');
       if (lastEntryString) {
         const lastEntry = JSON.parse(lastEntryString);
         TogglButton.$latestStoppedEntry = lastEntry;
@@ -1903,10 +1922,11 @@ window.TogglButton = {
     }
   },
 
-  stopTrackingOnBrowserClosed: function () {
+  stopTrackingOnBrowserClosed: async function () {
     openWindowsCount--;
+    const stopAutomatically = await db.get('stopAutomatically');
     if (
-      db.get('stopAutomatically') &&
+      stopAutomatically &&
       openWindowsCount === 0 &&
       TogglButton.$curEntry
     ) {
@@ -1914,8 +1934,9 @@ window.TogglButton = {
     }
   },
 
-  checkPermissions: function (show) {
-    if (!db.get('dont-show-permissions') && !FF) {
+  checkPermissions: async function (show) {
+    const dontShowPermissions = await db.get('dont-show-permissions');
+    if (!dontShowPermissions && !FF) {
       chrome.permissions.getAll(function (results) {
         if (show != null || results.origins.length === 2) {
           show = show != null ? show : 2;
@@ -1984,13 +2005,19 @@ window.db = new Db(TogglButton);
 window.ga = new Ga(db);
 
 TogglButton.queue.push(TogglButton.startAutomatically);
-TogglButton.toggleRightClickButton(db.get('showRightClickButton'));
+db.get('showRightClickButton')
+  .then((setting) => {
+    TogglButton.toggleRightClickButton(setting);
+  });
 TogglButton.fetchUser();
 TogglButton.setNannyTimer();
 TogglButton.startCheckingUserState();
 chrome.tabs.onUpdated.addListener(TogglButton.tabUpdated);
 chrome.alarms.onAlarm.addListener(TogglButton.pomodoroAlarmStop);
-TogglButton.startCheckingDayEnd(db.get('stopAtDayEnd'));
+db.get('stopAtDayEnd')
+  .then((setting) => {
+    TogglButton.startCheckingDayEnd(setting);
+  });
 chrome.runtime.onMessage.addListener(TogglButton.newMessage);
 chrome.notifications.onClosed.addListener(TogglButton.onNotificationClosed);
 chrome.notifications.onClicked.addListener(TogglButton.onNotificationClicked);
@@ -2009,9 +2036,12 @@ chrome.windows.onCreated.addListener(function (window) {
 });
 chrome.windows.onRemoved.addListener(TogglButton.stopTrackingOnBrowserClosed);
 window.onbeforeunload = function () {
-  if (db.get('stopAutomatically') && TogglButton.$curEntry) {
-    TogglButton.stopTimeEntry(TogglButton.$curEntry);
-  }
+  db.get('stopAutomatically')
+    .then((stopAutomatically) => {
+      if (stopAutomatically && TogglButton.$curEntry) {
+        TogglButton.stopTimeEntry(TogglButton.$curEntry);
+      }
+    });
 };
 
 if (!FF) {
