@@ -161,45 +161,29 @@ export default class Db {
     return item.name.toLowerCase().replace(' ', '-') + '.js';
   }
 
-  getOrigin(origin) {
-    var origins = localStorage.getItem(this.originsKey),
-      obj;
-    if (!!origins) {
-      obj = JSON.parse(origins);
-      return obj[origin];
-    }
-    return null;
+  getOrigin = async (origin) => {
+    const origins = await this.get(this.originsKey);
+    return origins[origin] || null;
   }
 
-  setOrigin(newOrigin, baseOrigin) {
-    var origins = localStorage.getItem(this.originsKey),
-      obj = {};
-
-    if (!!origins) {
-      obj = JSON.parse(origins);
-    }
-    obj[newOrigin] = baseOrigin;
-    localStorage.setItem(this.originsKey, JSON.stringify(obj));
+  setOrigin = async (newOrigin, baseOrigin) => {
+    const origins = await this.get(this.originsKey);
+    origins[newOrigin] = baseOrigin;
+    this.set(this.originsKey, {
+      ...origins,
+      [newOrigin]: baseOrigin
+    });
   }
 
-  removeOrigin(origin) {
-    var origins = localStorage.getItem(this.originsKey),
-      obj;
-
-    if (!!origins) {
-      obj = JSON.parse(origins);
-      delete obj[origin];
-      localStorage.setItem(this.originsKey, JSON.stringify(obj));
-    }
+  removeOrigin = async (origin) => {
+    const origins = await this.get(this.originsKey);
+    delete obj[origin];
+    this.set(this.originsKey, origins);
   }
 
-  getAllOrigins() {
-    var origins = localStorage.getItem(this.originsKey),
-      obj;
-    if (!!origins) {
-      obj = JSON.parse(origins);
-      return obj;
-    }
+  getAllOrigins = async () => {
+    const origins = await this.get(this.originsKey);
+    return origins || null;
     return null;
   }
 
@@ -209,9 +193,9 @@ export default class Db {
    * @param {string=} scope The scope to remember that project.
    * If null, then set global default
    */
-  setDefaultProject(pid, scope) {
-    var userId = this.togglButton.$user.id,
-      defaultProjects = JSON.parse(this.get(userId + '-defaultProjects')) || {};
+  setDefaultProject = async (pid, scope) => {
+    const userId = this.togglButton.$user.id;
+    const defaultProjects = await this.get(userId + '-defaultProjects');
     if (!scope) {
       return this.set(userId + '-defaultProject', pid);
     }
@@ -224,16 +208,15 @@ export default class Db {
    * @param {string=} scope If null, then get global default
    * @returns {number} The default project for the given scope
    */
-  getDefaultProject(scope) {
+  getDefaultProject = async (scope) => {
     if (!this.togglButton.$user) {
       return 0;
     }
-    var userId = this.togglButton.$user.id,
-      defaultProjects = JSON.parse(this.get(userId + '-defaultProjects')),
-      defaultProject = parseInt(
-        this.get(userId + '-defaultProject') || '0',
-        10
-      );
+    const userId = this.togglButton.$user.id;
+    let defaultProjects = await this.get(userId + '-defaultProjects');
+    let defaultProject = await this.get(userId + '-defaultProject');
+    defaultProject = parseInt(defaultProject || '0', 10);
+
     if (!scope || !defaultProjects) {
       return defaultProject;
     }
@@ -265,8 +248,8 @@ export default class Db {
     return browser.storage.sync.set({[setting]: value});
   }
 
-  load(setting, defaultValue) {
-    var value = localStorage.getItem(setting);
+  load = async (setting, defaultValue) => {
+    var value = await this.get(setting);
     if (!!value) {
       if (typeof defaultValue === 'boolean') {
         value = JSON.parse(value);
@@ -274,7 +257,7 @@ export default class Db {
     } else {
       value = defaultValue;
     }
-    localStorage.setItem(setting, value);
+    this.set(setting, value);
     return value;
   }
 
