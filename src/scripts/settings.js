@@ -47,61 +47,78 @@ const Settings = {
   $sendUsageStatistics: null,
   $sendErrorReports: null,
   $enableAutoTagging: null,
-  showPage: function () {
-    const volume = parseInt(db.get('pomodoroSoundVolume') * 100, 10);
-
-    const rememberProjectPer = db.get('rememberProjectPer');
+  showPage: async function () {
+    const pomodoroSoundVolume = await db.get('pomodoroSoundVolume');
+    const volume = parseInt(pomodoroSoundVolume * 100, 10);
+    const rememberProjectPer = await db.get('rememberProjectPer');
 
     try {
       if (!TogglButton) {
         TogglButton = chrome.extension.getBackgroundPage().TogglButton;
       }
       Settings.setFromTo();
-      document.querySelector('#nag-nanny-interval').value =
-        db.get('nannyInterval') / 60000;
+      const nannyInterval = await db.get('nannyInterval');
+      const showRightClickButton = await db.get('showRightClickButton');
+      const enableAutoTagging = await db.get('enableAutoTagging');
+      const startAutomatically = await db.get('startAutomatically');
+      const stopAutomatically = await db.get('stopAutomatically');
+      const idleDetectionEnabled = await db.get('idleDetectionEnabled');
+      const showPostPopup = await db.get('showPostPopup');
+      const nannyCheckEnabled = await db.get('nannyCheckEnabled');
+      const pomodoroModeEnabled = await db.get('pomodoroModeEnabled');
+      const pomodoroInterval = await db.get('pomodoroInterval');
+      const pomodoroSoundEnabled = await db.get('pomodoroSoundEnabled');
+      const pomodoroStopTimeTrackingWhenTimerEnds = await db.get('pomodoroStopTimeTrackingWhenTimerEnds');
+      const sendUsageStatistics = await db.get('sendUsageStatistics');
+      const sendErrorReports = await db.get('sendErrorReports');
+      const stopAtDayEnd = await db.get('stopAtDayEnd');
+      const dayEndTime = await db.get('dayEndTime');
+
+      document.querySelector('#nag-nanny-interval').value = nannyInterval / 60000;
       Settings.$pomodoroVolume.value = volume;
       Settings.$pomodoroVolumeLabel.textContent = volume + '%';
+
       Settings.toggleState(
         Settings.$showRightClickButton,
-        db.get('showRightClickButton')
+        showRightClickButton
       );
       Settings.toggleState(
         Settings.$enableAutoTagging,
-        db.get('enableAutoTagging')
+        enableAutoTagging
       );
       Settings.toggleState(
         Settings.$startAutomatically,
-        db.get('startAutomatically')
+        startAutomatically
       );
       Settings.toggleState(
         Settings.$stopAutomatically,
-        db.get('stopAutomatically')
+        stopAutomatically
       );
-      Settings.toggleState(Settings.$postPopup, db.get('showPostPopup'));
-      Settings.toggleState(Settings.$nanny, db.get('nannyCheckEnabled'));
+      Settings.toggleState(Settings.$postPopup, showPostPopup);
+      Settings.toggleState(Settings.$nanny, nannyCheckEnabled);
       Settings.toggleState(
         Settings.$idleDetection,
-        db.get('idleDetectionEnabled')
+        idleDetectionEnabled
       );
       Settings.toggleState(
         Settings.$pomodoroMode,
-        db.get('pomodoroModeEnabled')
+        pomodoroModeEnabled
       );
       Settings.toggleState(
         Settings.$pomodoroSound,
-        db.get('pomodoroSoundEnabled')
+        pomodoroSoundEnabled
       );
       Settings.toggleState(
         Settings.$pomodoroStopTimeTracking,
-        db.get('pomodoroStopTimeTrackingWhenTimerEnds')
+        pomodoroStopTimeTrackingWhenTimerEnds
       );
       Settings.toggleState(
         Settings.$sendUsageStatistics,
-        db.get('sendUsageStatistics')
+        sendUsageStatistics
       );
       Settings.toggleState(
         Settings.$sendErrorReports,
-        db.get('sendErrorReports')
+        sendErrorReports
       );
       Array.apply(null, Settings.$rememberProjectPer.options).forEach(function (
         option
@@ -111,12 +128,10 @@ const Settings = {
         }
       });
 
-      document.querySelector('#pomodoro-interval').value = db.get(
-        'pomodoroInterval'
-      );
+      document.querySelector('#pomodoro-interval').value = pomodoroInterval;
 
-      Settings.toggleState(Settings.$stopAtDayEnd, db.get('stopAtDayEnd'));
-      document.querySelector('#day-end-time').value = db.get('dayEndTime');
+      Settings.toggleState(Settings.$stopAtDayEnd, stopAtDayEnd);
+      document.querySelector('#day-end-time').value = dayEndTime;
 
       Settings.fillDefaultProject();
 
@@ -131,33 +146,35 @@ const Settings = {
       });
     }
   },
-  fillDefaultProject: function () {
-    let key; let project; let clientName; let projects; let clients; let defProject; let html; let dom;
-    if (db.get('projects') !== '' && !!TogglButton.$user) {
-      defProject = db.getDefaultProject();
-      projects = JSON.parse(db.get('projects'));
-      clients = JSON.parse(db.get('clients'));
+  fillDefaultProject: async function () {
+    let projects = await db.get('projects');
+    if (!projects) projects = {};
+    const hasProjects = Object.keys(projects).length > 0;
 
-      html = document.createElement('select');
+    if (hasProjects && !!TogglButton.$user) {
+      const defaultProject = await db.getDefaultProject();
+      const clients = await db.get('clients');
+
+      const html = document.createElement('select');
       html.id = 'default-project';
       html.setAttribute('name', 'default-project');
 
-      dom = document.createElement('option');
+      let dom = document.createElement('option');
       dom.setAttribute('value', '0');
       dom.textContent = '- No project -';
 
       html.appendChild(dom);
 
-      for (key in projects) {
+      for (const key in projects) {
         if (projects.hasOwnProperty(key)) {
-          project = projects[key];
-          clientName =
+          const project = projects[key];
+          const clientName =
             !!project.cid && !!clients[project.cid]
               ? ' . ' + clients[project.cid].name
               : '';
           dom = document.createElement('option');
 
-          if (!!defProject && parseInt(defProject, 10) === project.id) {
+          if (!!defaultProject && parseInt(defaultProject, 10) === project.id) {
             dom.setAttribute('selected', 'selected');
           }
 
@@ -209,8 +226,9 @@ const Settings = {
     }
     return { origins: urls };
   },
-  setFromTo: function () {
-    const fromTo = db.get('nannyFromTo').split('-');
+  setFromTo: async function () {
+    const nannyFromTo = await db.get('nannyFromTo');
+    const fromTo = nannyFromTo.split('-');
     document.querySelector('#nag-nanny-from').value = fromTo[0];
     document.querySelector('#nag-nanny-to').value = fromTo[1];
   },
@@ -230,7 +248,7 @@ const Settings = {
   saveSetting: function (value, type) {
     Settings.toggleSetting(null, value, type);
   },
-  loadSitesIntoList: function () {
+  loadSitesIntoList: async function () {
     let html;
     let htmlList;
     let customHtml;
@@ -256,7 +274,7 @@ const Settings = {
       customHtml.id = 'custom-permissions-list';
       customHtml.className = 'origin-list';
 
-      customs = db.getAllOrigins();
+      customs = await db.getAllOrigins();
       for (k in customs) {
         if (customs.hasOwnProperty(k) && !!TogglOrigins[customs[k]]) {
           li = document.createElement('li');
@@ -499,11 +517,11 @@ const Settings = {
   },
 
   disableAllOrigins: function (e) {
-    chrome.permissions.getAll(function (result) {
+    chrome.permissions.getAll(async function (result) {
       const origins = [];
       let i;
       let key;
-      const customOrigins = db.getAllOrigins();
+      const customOrigins = await db.getAllOrigins();
       let skip = false;
 
       try {
@@ -574,7 +592,7 @@ const Settings = {
   }
 };
 
-document.addEventListener('DOMContentLoaded', function (e) {
+document.addEventListener('DOMContentLoaded', async function (e) {
   try {
     Settings.$pomodoroVolume = document.querySelector('#sound-volume');
     Settings.$pomodoroVolumeLabel = document.querySelector('#volume-label');
@@ -607,8 +625,9 @@ document.addEventListener('DOMContentLoaded', function (e) {
     Settings.$enableAutoTagging = document.querySelector('#enable-auto-tagging');
 
     // Show permissions page with notice
+    const dontShowPermissions = await db.get('dont-show-permissions');
     if (
-      !db.get('dont-show-permissions')
+      !dontShowPermissions
     ) {
       document.querySelector('.guide-container').style.display = 'flex';
       document.querySelector(
@@ -622,7 +641,8 @@ document.addEventListener('DOMContentLoaded', function (e) {
     }
 
     // Change active tab.
-    const activeTab = Number.parseInt(db.get('settings-active-tab'), 10);
+    const settingsActiveTab = await db.get('settings-active-tab');
+    const activeTab = Number.parseInt(settingsActiveTab, 10);
     changeActiveTab(activeTab);
     document.querySelector('body').style.display = 'block';
 
@@ -661,87 +681,55 @@ document.addEventListener('DOMContentLoaded', function (e) {
       Settings.$permissionsList.classList.remove('filtered');
     });
 
-    Settings.$showRightClickButton.addEventListener('click', function (e) {
+    Settings.$showRightClickButton.addEventListener('click', async function (e) {
+      const showRightClickButton = await db.get('showRightClickButton');
       Settings.toggleSetting(
         e.target,
-        localStorage.getItem('showRightClickButton') !== 'true',
+        !showRightClickButton,
         'toggle-right-click-button'
       );
-      TogglButton.toggleRightClickButton(
-        localStorage.getItem('showRightClickButton') !== 'true'
-      );
+      TogglButton.toggleRightClickButton(!showRightClickButton);
     });
-    Settings.$enableAutoTagging.addEventListener('click', function (e) {
-      Settings.toggleSetting(
-        e.target,
-        localStorage.getItem('enableAutoTagging') !== 'true',
-        'update-enable-auto-tagging'
-      );
+    Settings.$enableAutoTagging.addEventListener('click', async function (e) {
+      const enableAutoTagging = await db.get('enableAutoTagging');
+      Settings.toggleSetting(e.target, !enableAutoTagging, 'update-enable-auto-tagging');
     });
-    Settings.$startAutomatically.addEventListener('click', function (e) {
-      Settings.toggleSetting(
-        e.target,
-        localStorage.getItem('startAutomatically') !== 'true',
-        'toggle-start-automatically'
-      );
+    Settings.$startAutomatically.addEventListener('click', async function (e) {
+      const startAutomatically = await db.get('startAutomatically');
+      Settings.toggleSetting(e.target, !startAutomatically, 'toggle-start-automatically');
     });
-    Settings.$stopAutomatically.addEventListener('click', function (e) {
-      Settings.toggleSetting(
-        e.target,
-        localStorage.getItem('stopAutomatically') !== 'true',
-        'toggle-stop-automatically'
-      );
+    Settings.$stopAutomatically.addEventListener('click', async function (e) {
+      const stopAutomatically = await db.getItem('stopAutomatically');
+      Settings.toggleSetting(e.target, !stopAutomatically, 'toggle-stop-automatically');
     });
-    Settings.$postPopup.addEventListener('click', function (e) {
-      Settings.toggleSetting(
-        e.target,
-        localStorage.getItem('showPostPopup') !== 'true',
-        'toggle-popup'
-      );
+    Settings.$postPopup.addEventListener('click', async function (e) {
+      const showPostPopup = await db.get('showPostPopup');
+      Settings.toggleSetting(e.target, showPostPopup, 'toggle-popup');
     });
-    Settings.$nanny.addEventListener('click', function (e) {
-      Settings.toggleSetting(
-        e.target,
-        localStorage.getItem('nannyCheckEnabled') !== 'true',
-        'toggle-nanny'
-      );
+    Settings.$nanny.addEventListener('click', async function (e) {
+      const nannyCheckEnabled = await db.get('nannyCheckEnabled');
+      Settings.toggleSetting(e.target, !nannyCheckEnabled, 'toggle-nanny');
     });
-    Settings.$idleDetection.addEventListener('click', function (e) {
-      Settings.toggleSetting(
-        e.target,
-        localStorage.getItem('idleDetectionEnabled') !== 'true',
-        'toggle-idle'
-      );
+    Settings.$idleDetection.addEventListener('click', async function (e) {
+      const idleDetectionEnabled = await db.get('idleDetectionEnabled');
+      Settings.toggleSetting(e.target, !idleDetectionEnabled, 'toggle-idle');
     });
-    Settings.$pomodoroMode.addEventListener('click', function (e) {
-      Settings.toggleSetting(
-        e.target,
-        localStorage.getItem('pomodoroModeEnabled') !== 'true',
-        'toggle-pomodoro'
-      );
+    Settings.$pomodoroMode.addEventListener('click', async function (e) {
+      const pomodoroModeEnabled = await db.get('pomodoroModeEnabled');
+      Settings.toggleSetting(e.target, !pomodoroModeEnabled, 'toggle-pomodoro');
     });
-    Settings.$pomodoroSound.addEventListener('click', function (e) {
-      Settings.toggleSetting(
-        e.target,
-        localStorage.getItem('pomodoroSoundEnabled') !== 'true',
-        'toggle-pomodoro-sound'
-      );
+    Settings.$pomodoroSound.addEventListener('click', async function (e) {
+      const pomodoroSoundEnabled = await db.get('pomodoroSoundEnabled');
+      Settings.toggleSetting(e.target, !pomodoroSoundEnabled, 'toggle-pomodoro-sound');
     });
-    Settings.$pomodoroStopTimeTracking.addEventListener('click', function (e) {
-      Settings.toggleSetting(
-        e.target,
-        localStorage.getItem('pomodoroStopTimeTrackingWhenTimerEnds') !==
-        'true',
-        'toggle-pomodoro-stop-time'
-      );
+    Settings.$pomodoroStopTimeTracking.addEventListener('click', async function (e) {
+      const pomodoroStopTimeTrackingWhenTimerEnds = await db.get('pomodoroStopTimeTrackingWhenTimerEnds');
+      Settings.toggleSetting(e.target, !pomodoroStopTimeTrackingWhenTimerEnds, 'toggle-pomodoro-stop-time');
     });
 
-    Settings.$stopAtDayEnd.addEventListener('click', function (e) {
-      Settings.toggleSetting(
-        e.target,
-        localStorage.getItem('stopAtDayEnd') !== 'true',
-        'toggle-stop-at-day-end'
-      );
+    Settings.$stopAtDayEnd.addEventListener('click', async function (e) {
+      const stopAtDayEnd = await db.get('stopAtDayEnd');
+      Settings.toggleSetting(e.target, !stopAtDayEnd, 'toggle-stop-at-day-end');
     });
 
     Settings.$rememberProjectPer.addEventListener('change', function (e) {
@@ -776,9 +764,10 @@ document.addEventListener('DOMContentLoaded', function (e) {
 
     document
       .querySelector('#sound-test')
-      .addEventListener('click', function (e) {
+      .addEventListener('click', async function (e) {
         const sound = new Audio();
-        sound.src = '../' + db.get('pomodoroSoundFile');
+        const soundFile = await db.get('pomodoroSoundFile');
+        sound.src = '../' + soundFile;
         sound.volume = Settings.$pomodoroVolume.value / 100;
         sound.play();
       });
@@ -874,20 +863,14 @@ document.addEventListener('DOMContentLoaded', function (e) {
           'none';
       });
 
-    Settings.$sendUsageStatistics.addEventListener('click', function (e) {
-      Settings.toggleSetting(
-        e.target,
-        localStorage.getItem('sendUsageStatistics') !== 'true',
-        'update-send-usage-statistics'
-      );
+    Settings.$sendUsageStatistics.addEventListener('click', async function (e) {
+      const sendUsageStatistics = await db.get('sendUsageStatistics');
+      Settings.toggleSetting(e.target, !sendUsageStatistics, 'update-send-usage-statistics');
     });
 
-    Settings.$sendErrorReports.addEventListener('click', function (e) {
-      Settings.toggleSetting(
-        e.target,
-        localStorage.getItem('sendErrorReports') !== 'true',
-        'update-send-error-reports'
-      );
+    Settings.$sendErrorReports.addEventListener('click', async function (e) {
+      const sendErrorReports = await db.get('sendErrorReports');
+      Settings.toggleSetting(e.target, !sendErrorReports, 'update-send-error-reports');
     });
 
     Settings.loadSitesIntoList();
