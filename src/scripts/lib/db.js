@@ -1,5 +1,6 @@
 import bugsnagClient from './bugsnag';
 import origins from '../origins';
+const browser = require("webextension-polyfill");
 
 export default class Db {
   originsKey = 'TogglButton-origins';
@@ -37,7 +38,7 @@ export default class Db {
     sendUsageStatistics: true
   };
 
-  newMessage = (request, sender, sendResponse) => {
+  newMessage = async (request, sender, sendResponse) => {
     try {
       if (request.type === 'toggle-popup') {
         this.set('showPostPopup', request.state);
@@ -48,18 +49,20 @@ export default class Db {
           this.togglButton.setNannyTimer
         );
       } else if (request.type === 'toggle-nanny-from-to') {
+        const nannyCheckEnabled = await this.get('nannyCheckEnabled');
         this.updateSetting(
           'nannyFromTo',
           request.state,
           this.togglButton.setNannyTimer,
-          this.get('nannyCheckEnabled')
+          nannyCheckEnabled
         );
       } else if (request.type === 'toggle-nanny-interval') {
+        const nannyCheckEnabled = await this.get('nannyCheckEnabled');
         this.updateSetting(
           'nannyInterval',
           Math.max(request.state, 1000),
           this.togglButton.setNannyTimer,
-          this.get('nannyCheckEnabled')
+          nannyCheckEnabled
         );
       } else if (request.type === 'toggle-idle') {
         this.updateSetting(
@@ -90,7 +93,7 @@ export default class Db {
         this.updateSetting('dayEndTime', request.state);
       } else if (request.type === 'change-default-project') {
         this.updateSetting(
-          chrome.extension.getBackgroundPage().this.togglButton.$user.id +
+          browser.extension.getBackgroundPage().this.togglButton.$user.id +
             '-defaultProject',
           request.state
         );
@@ -126,7 +129,7 @@ export default class Db {
     this.togglButton = togglButton;
     this.loadAll();
 
-    chrome.runtime.onMessage.addListener(this.newMessage);
+    browser.runtime.onMessage.addListener(this.newMessage);
   }
 
   getOriginFileName(domain) {
@@ -245,17 +248,21 @@ export default class Db {
   }
 
   get(setting) {
-    var value = localStorage.getItem(setting);
-    if (!!value) {
-      if (value === 'false' || value === 'true') {
-        value = JSON.parse(value);
-      }
-    }
-    return value;
+    return browser.storage.sync.get([setting])
+      .then((result) => {
+        let value = result[setting];
+        if (!!value) {
+          // This is kept around to ensure older version's settings still function.
+          if (value === 'false' || value === 'true') {
+            value = JSON.parse(value);
+          }
+        }
+        return value;
+      })
   }
 
   set(setting, value) {
-    localStorage.setItem(setting, value);
+    return browser.storage.sync.set({[setting]: value});
   }
 
   load(setting, defaultValue) {
