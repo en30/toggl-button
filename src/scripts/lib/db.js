@@ -1,44 +1,51 @@
 import bugsnagClient from './bugsnag';
 import origins from '../origins';
-const browser = require("webextension-polyfill");
+const browser = require('webextension-polyfill');
+
+const ORIGINS_KEY = 'TogglButton-origins';
+
+// settings: key, default value
+const DEFAULT_SETTINGS = {
+  startAutomatically: false,
+  stopAutomatically: false,
+  showRightClickButton: true,
+  showPostPopup: true,
+  nannyCheckEnabled: true,
+  nannyInterval: 3600000,
+  nannyFromTo: '09:00-17:00',
+  idleDetectionEnabled: false,
+  pomodoroModeEnabled: false,
+  pomodoroSoundFile: 'sounds/time_is_up_1.mp3',
+  pomodoroSoundEnabled: true,
+  pomodoroSoundVolume: 1,
+  pomodoroStopTimeTrackingWhenTimerEnds: true,
+  pomodoroInterval: 25,
+  stopAtDayEnd: false,
+  dayEndTime: '17:00',
+  defaultProject: 0,
+  projects: '',
+  rememberProjectPer: 'false',
+  enableAutoTagging: false
+};
+
+// core settings: key, default value
+const CORE_SETTINGS = {
+  'dont-show-permissions': false,
+  'show-permissions-info': 0,
+  'settings-active-tab': 0,
+  sendErrorReports: true,
+  sendUsageStatistics: true
+};
 
 export default class Db {
-  originsKey = 'TogglButton-origins';
+  constructor (togglButton) {
+    this.togglButton = togglButton;
+    this.loadAll();
 
-  // settings: key, default value
-  settings = {
-    startAutomatically: false,
-    stopAutomatically: false,
-    showRightClickButton: true,
-    showPostPopup: true,
-    nannyCheckEnabled: true,
-    nannyInterval: 3600000,
-    nannyFromTo: '09:00-17:00',
-    idleDetectionEnabled: false,
-    pomodoroModeEnabled: false,
-    pomodoroSoundFile: 'sounds/time_is_up_1.mp3',
-    pomodoroSoundEnabled: true,
-    pomodoroSoundVolume: 1,
-    pomodoroStopTimeTrackingWhenTimerEnds: true,
-    pomodoroInterval: 25,
-    stopAtDayEnd: false,
-    dayEndTime: '17:00',
-    defaultProject: 0,
-    projects: '',
-    rememberProjectPer: 'false',
-    enableAutoTagging: false
-  };
+    browser.runtime.onMessage.addListener(this.newMessage);
+  }
 
-  // core settings: key, default value
-  core = {
-    'dont-show-permissions': false,
-    'show-permissions-info': 0,
-    'settings-active-tab': 0,
-    sendErrorReports: true,
-    sendUsageStatistics: true
-  };
-
-  newMessage = async (request, sender, sendResponse) => {
+  async newMessage (request, sender, sendResponse) {
     try {
       if (request.type === 'toggle-popup') {
         this.set('showPostPopup', request.state);
@@ -108,15 +115,15 @@ export default class Db {
       } else if (
         request.type === 'update-send-usage-statistics'
       ) {
-        this.updateSetting('sendUsageStatistics', request.state)
+        this.updateSetting('sendUsageStatistics', request.state);
       } else if (
         request.type === 'update-send-error-reports'
       ) {
-        this.updateSetting('sendErrorReports', request.state)
+        this.updateSetting('sendErrorReports', request.state);
       } else if (
         request.type === 'update-enable-auto-tagging'
       ) {
-        this.updateSetting('enableAutoTagging', request.state)
+        this.updateSetting('enableAutoTagging', request.state);
       }
     } catch (e) {
       bugsnagClient.notify(e);
@@ -125,16 +132,8 @@ export default class Db {
     return true;
   };
 
-  constructor(togglButton) {
-    this.togglButton = togglButton;
-    this.loadAll();
-
-    browser.runtime.onMessage.addListener(this.newMessage);
-  }
-
-  getOriginFileName(domain) {
-    var origin = this.getOrigin(domain),
-      item;
+  getOriginFileName (domain) {
+    let origin = this.getOrigin(domain);
 
     if (!origin) {
       origin = domain;
@@ -152,39 +151,38 @@ export default class Db {
       }
     }
 
-    item = origins[origin];
+    const item = origins[origin];
 
-    if (!!item.file) {
+    if (item.file) {
       return item.file;
     }
 
     return item.name.toLowerCase().replace(' ', '-') + '.js';
   }
 
-  getOrigin = async (origin) => {
-    const origins = await this.get(this.originsKey);
+  async getOrigin (origin) {
+    const origins = await this.get(ORIGINS_KEY);
     return origins[origin] || null;
   }
 
-  setOrigin = async (newOrigin, baseOrigin) => {
-    const origins = await this.get(this.originsKey);
+  async setOrigin (newOrigin, baseOrigin) {
+    const origins = await this.get(ORIGINS_KEY);
     origins[newOrigin] = baseOrigin;
-    this.set(this.originsKey, {
+    this.set(ORIGINS_KEY, {
       ...origins,
       [newOrigin]: baseOrigin
     });
   }
 
-  removeOrigin = async (origin) => {
-    const origins = await this.get(this.originsKey);
-    delete obj[origin];
-    this.set(this.originsKey, origins);
+  async removeOrigin (origin) {
+    const origins = await this.get(ORIGINS_KEY);
+    delete origins[origin];
+    this.set(ORIGINS_KEY, origins);
   }
 
-  getAllOrigins = async () => {
-    const origins = await this.get(this.originsKey);
+  async getAllOrigins () {
+    const origins = await this.get(ORIGINS_KEY);
     return origins || null;
-    return null;
   }
 
   /**
@@ -193,7 +191,7 @@ export default class Db {
    * @param {string=} scope The scope to remember that project.
    * If null, then set global default
    */
-  setDefaultProject = async (pid, scope) => {
+  async setDefaultProject (pid, scope) {
     const userId = this.togglButton.$user.id;
     const defaultProjects = await this.get(userId + '-defaultProjects');
     if (!scope) {
@@ -208,12 +206,12 @@ export default class Db {
    * @param {string=} scope If null, then get global default
    * @returns {number} The default project for the given scope
    */
-  getDefaultProject = async (scope) => {
+  async getDefaultProject (scope) {
     if (!this.togglButton.$user) {
       return 0;
     }
     const userId = this.togglButton.$user.id;
-    let defaultProjects = await this.get(userId + '-defaultProjects');
+    const defaultProjects = await this.get(userId + '-defaultProjects');
     let defaultProject = await this.get(userId + '-defaultProject');
     defaultProject = parseInt(defaultProject || '0', 10);
 
@@ -223,34 +221,34 @@ export default class Db {
     return defaultProjects[scope] || defaultProject;
   }
 
-  resetDefaultProjects() {
+  resetDefaultProjects () {
     if (!this.togglButton.$user) {
       return;
     }
     this.set(this.togglButton.$user.id + '-defaultProjects', null);
   }
 
-  get(setting) {
+  get (setting) {
     return browser.storage.sync.get([setting])
       .then((result) => {
         let value = result[setting];
-        if (!!value) {
+        if (value) {
           // This is kept around to ensure older version's settings still function.
           if (value === 'false' || value === 'true') {
             value = JSON.parse(value);
           }
         }
         return value;
-      })
+      });
   }
 
-  set(setting, value) {
-    return browser.storage.sync.set({[setting]: value});
+  set (setting, value) {
+    return browser.storage.sync.set({ [setting]: value });
   }
 
-  load = async (setting, defaultValue) => {
-    var value = await this.get(setting);
-    if (!!value) {
+  async load (setting, defaultValue) {
+    let value = await this.get(setting);
+    if (value) {
       if (typeof defaultValue === 'boolean') {
         value = JSON.parse(value);
       }
@@ -261,23 +259,22 @@ export default class Db {
     return value;
   }
 
-  loadAll() {
-    var k;
-    for (k in this.settings) {
-      if (this.settings.hasOwnProperty(k)) {
-        this.load(k, this.settings[k]);
+  loadAll () {
+    for (const k in DEFAULT_SETTINGS) {
+      if (DEFAULT_SETTINGS.hasOwnProperty(k)) {
+        this.load(k, DEFAULT_SETTINGS[k]);
       }
     }
 
-    for (k in this.core) {
-      if (this.core.hasOwnProperty(k)) {
-        this.load(k, this.core[k]);
+    for (const k in CORE_SETTINGS) {
+      if (CORE_SETTINGS.hasOwnProperty(k)) {
+        this.load(k, CORE_SETTINGS[k]);
       }
     }
   }
 
-  updateSetting(key, state, callback, condition) {
-    var c = condition !== null ? condition : state;
+  updateSetting (key, state, callback, condition) {
+    const c = condition !== null ? condition : state;
     this.set(key, state);
 
     if (c && callback !== null) {
