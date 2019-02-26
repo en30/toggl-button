@@ -150,8 +150,8 @@ window.TogglButton = {
             }
 
             TogglButton.updateTriggers(entry);
-            db.set('projects', projectMap);
-            db.set('clients', clientMap);
+            localStorage.setItem('projects', JSON.stringify(projectMap));
+            localStorage.setItem('clients', JSON.stringify(clientMap));
             TogglButton.$user = resp.data;
             TogglButton.$user.projectMap = projectMap;
             TogglButton.$user.clientMap = clientMap;
@@ -1772,7 +1772,7 @@ window.TogglButton = {
         }
 
         if (process.env.DEBUG) {
-          console.log(error);
+          console.log(error, request.stack);
           console.log(request.category + ' Script Error [' + errorSource + ']');
         } else {
           if (request.category === 'Content') {

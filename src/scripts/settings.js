@@ -147,13 +147,12 @@ const Settings = {
     }
   },
   fillDefaultProject: async function () {
-    let projects = await db.get('projects');
-    if (!projects) projects = {};
+    const projects = db.getLocalCollection('projects');
     const hasProjects = Object.keys(projects).length > 0;
 
     if (hasProjects && !!TogglButton.$user) {
       const defaultProject = await db.getDefaultProject();
-      const clients = await db.get('clients');
+      const clients = db.getLocalCollection('clients');
 
       const html = document.createElement('select');
       html.id = 'default-project';
@@ -629,9 +628,10 @@ document.addEventListener('DOMContentLoaded', async function (e) {
     if (
       !dontShowPermissions
     ) {
+      const showPermissionsInfo = await db.get('show-permissions-info') || 0;
       document.querySelector('.guide-container').style.display = 'flex';
       document.querySelector(
-        ".guide > div[data-id='" + db.get('show-permissions-info') + "']"
+        ".guide > div[data-id='" + showPermissionsInfo + "']"
       ).style.display =
         'block';
       document

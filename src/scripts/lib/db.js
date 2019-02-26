@@ -23,7 +23,6 @@ const DEFAULT_SETTINGS = {
   stopAtDayEnd: false,
   dayEndTime: '17:00',
   defaultProject: 0,
-  projects: '',
   rememberProjectPer: 'false',
   enableAutoTagging: false
 };
@@ -161,12 +160,12 @@ export default class Db {
   }
 
   async getOrigin (origin) {
-    const origins = await this.get(ORIGINS_KEY);
+    const origins = await this.get(ORIGINS_KEY) || {};
     return origins[origin] || null;
   }
 
   async setOrigin (newOrigin, baseOrigin) {
-    const origins = await this.get(ORIGINS_KEY);
+    const origins = await this.get(ORIGINS_KEY) || {};
     origins[newOrigin] = baseOrigin;
     this.set(ORIGINS_KEY, {
       ...origins,
@@ -175,14 +174,14 @@ export default class Db {
   }
 
   async removeOrigin (origin) {
-    const origins = await this.get(ORIGINS_KEY);
+    const origins = await this.get(ORIGINS_KEY) || {};
     delete origins[origin];
     this.set(ORIGINS_KEY, origins);
   }
 
   async getAllOrigins () {
     const origins = await this.get(ORIGINS_KEY);
-    return origins || null;
+    return origins || {};
   }
 
   /**
@@ -243,7 +242,22 @@ export default class Db {
   }
 
   set (setting, value) {
-    return browser.storage.sync.set({ [setting]: value });
+    return browser.storage.sync
+      .set({ [setting]: value })
+      .catch((e) => {
+        console.error(`Error attempting to save ${setting};`, e);
+      });
+  }
+
+  getLocalCollection (key) {
+    let collection = localStorage.getItem(key);
+    if (!collection) {
+      collection = {};
+    } else {
+      collection = JSON.parse(collection);
+    }
+
+    return collection;
   }
 
   async load (setting, defaultValue) {
