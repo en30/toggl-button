@@ -103,12 +103,10 @@ window.TogglButton = {
 
           try {
             if (xhr.status === 200) {
-              browser.tabs.query(
-                { active: true, currentWindow: true }).then(
-                filterTabs(function (tabs) {
+              browser.tabs.query({ active: true, currentWindow: true })
+                .then(filterTabs(function (tabs) {
                   browser.tabs.sendMessage(tabs[0].id, { type: 'sync' });
-                })
-              );
+                }));
               resp = JSON.parse(xhr.responseText);
               if (resp.data.projects) {
                 resp.data.projects.forEach(function (project) {
@@ -735,15 +733,10 @@ window.TogglButton = {
             TogglButton.resetPomodoroProgress(null);
             if (timeEntry.respond) {
               sendResponse({ success: true, type: 'Stop' });
-              browser.tabs.query(
-                { active: true, currentWindow: true }).then(
-                filterTabs(function (tabs) {
-                  browser.tabs.sendMessage(tabs[0].id, {
-                    type: 'stop-entry',
-                    user: TogglButton.$user
-                  });
-                })
-              );
+              browser.tabs.query({ active: true, currentWindow: true })
+                .then(filterTabs(function (tabs) {
+                  browser.tabs.sendMessage(tabs[0].id, { type: 'stop-entry', user: TogglButton.$user });
+                }));
             }
             TogglButton.setNannyTimer();
             ga.reportEvent(timeEntry.type, timeEntry.service);
@@ -786,15 +779,10 @@ window.TogglButton = {
             TogglButton.resetPomodoroProgress(null);
             if (timeEntry.respond) {
               sendResponse({ success: true, type: 'Stop' });
-              browser.tabs.query(
-                { active: true, currentWindow: true }).then(
-                filterTabs(function (tabs) {
-                  browser.tabs.sendMessage(tabs[0].id, {
-                    type: 'stop-entry',
-                    user: TogglButton.$user
-                  });
-                })
-              );
+              browser.tabs.query({ active: true, currentWindow: true })
+                .then(filterTabs(function (tabs) {
+                  browser.tabs.sendMessage(tabs[0].id, { type: 'stop-entry', user: TogglButton.$user });
+                }));
             }
             TogglButton.setNannyTimer();
             ga.reportEvent(timeEntry.type, timeEntry.service);
@@ -985,12 +973,8 @@ window.TogglButton = {
       }
       browser.browserAction.setBadgeText({ text: '' });
     }
-    browser.browserAction.setTitle({
-      title: title
-    });
-    browser.browserAction.setIcon({
-      path: imagePath
-    });
+    browser.browserAction.setTitle({ title: title });
+    browser.browserAction.setIcon({ path: imagePath });
   },
 
   loginUser: function (request) {
@@ -1248,21 +1232,18 @@ window.TogglButton = {
 
   refreshPage: function () {
     let domain;
-    browser.tabs.query(
-      { active: true, currentWindow: true }).then(
-      filterTabs(async function (tabs) {
+    browser.tabs.query({ active: true, currentWindow: true })
+      .then(filterTabs(async function (tabs) {
         domain = await TogglButton.extractDomain(tabs[0].url);
         if (domain.file) {
           browser.tabs.reload(tabs[0].id);
         }
-      })
-    );
+      }));
   },
 
   refreshPageLogout: function () {
-    browser.tabs.query(
-      { active: true, currentWindow: true }).then(
-      filterTabs(function (tabs) {
+    browser.tabs.query({ active: true, currentWindow: true })
+      .then(filterTabs(function (tabs) {
         browser.tabs.executeScript(
           tabs[0].id,
           {
@@ -1274,8 +1255,7 @@ window.TogglButton = {
             }
           }
         );
-      })
-    );
+      }));
   },
 
   /**
@@ -1290,7 +1270,7 @@ window.TogglButton = {
       TogglButton.$curEntry
     ) {
       TogglButton.$checkingUserState = setTimeout(function () {
-        browser.idle.queryState(15, TogglButton.onUserState);
+        browser.idle.queryState(15).then(TogglButton.onUserState);
       }, 2 * 1000);
     }
   },
@@ -1380,7 +1360,7 @@ window.TogglButton = {
   },
 
   checkState: function () {
-    browser.idle.queryState(15, TogglButton.checkActivity);
+    browser.idle.queryState(15).then(TogglButton.checkActivity);
   },
 
   checkActivity: async function (currentState) {
@@ -1462,10 +1442,7 @@ window.TogglButton = {
       }
 
       TogglButton.stopTimeEntry(TogglButton.$curEntry);
-      browser.notifications.create(
-        'workday-ended-notification',
-        options
-      );
+      browser.notifications.create('workday-ended-notification', options);
     }
   },
 
@@ -1913,48 +1890,46 @@ window.TogglButton = {
           TogglButton.checkLoadedScripts(tabId, domain.file);
         }
       } else {
-        browser.permissions.contains(permission).then(function (result) {
-          if (result && !!domain.file) {
-            TogglButton.checkLoadedScripts(tabId, domain.file);
-          }
-        });
+        browser.permissions.contains(permission)
+          .then(function (result) {
+            if (result && !!domain.file) {
+              TogglButton.checkLoadedScripts(tabId, domain.file);
+            }
+          });
       }
     }
   },
 
   checkLoadedScripts: function (tabId, file) {
-    browser.tabs.executeScript(
-      tabId,
-      {
-        code: "(typeof togglbutton === 'undefined')"
-      }).then(
-      function (firstLoad) {
+    browser.tabs.executeScript(tabId, { code: "(typeof togglbutton === 'undefined')" })
+      .then(function (isFirstLoad) {
         if (FF) {
-          if (firstLoad) {
+          if (isFirstLoad) {
             TogglButton.loadFiles(tabId, file);
           }
         } else {
-          if (!!firstLoad && !!firstLoad[0]) {
+          if (!!isFirstLoad && !!isFirstLoad[0]) {
             TogglButton.loadFiles(tabId, file);
           }
         }
-      }
-    );
+      });
   },
 
   loadFiles: function (tabId, file) {
     if (process.env.DEBUG) {
       console.log('Load content script: [' + file + ']');
     }
-    browser.tabs.insertCSS(tabId, { file: 'styles/style.css' }).then(function () {
-      browser.tabs.insertCSS(tabId, { file: 'styles/autocomplete.css' });
-    });
-
-    browser.tabs.executeScript(tabId, { file: 'scripts/common.js' }).then(function () {
-      browser.tabs.executeScript(tabId, {
-        file: 'scripts/content/' + file
+    browser.tabs.insertCSS(tabId, { file: 'styles/style.css' })
+      .then(function () {
+        browser.tabs.insertCSS(tabId, { file: 'styles/autocomplete.css' });
       });
-    });
+
+    browser.tabs.executeScript(tabId, { file: 'scripts/common.js' })
+      .then(function () {
+        browser.tabs.executeScript(tabId, {
+          file: 'scripts/content/' + file
+        });
+      });
   },
 
   extractDomain: async function (url) {
@@ -1987,6 +1962,11 @@ window.TogglButton = {
   },
 
   toggleRightClickButton: function (show) {
+    if (!browser.contextMenus) {
+      // Mobile browsers unsupported
+      return;
+    }
+
     if (show) {
       browser.contextMenus.create({
         title: 'Start timer',
@@ -2112,27 +2092,23 @@ TogglButton.setNannyTimer();
 TogglButton.startCheckingUserState();
 browser.tabs.onUpdated.addListener(TogglButton.tabUpdated);
 browser.alarms.onAlarm.addListener(TogglButton.pomodoroAlarmStop);
-db.get('stopAtDayEnd')
-  .then((setting) => {
-    TogglButton.startCheckingDayEnd(setting);
-  });
+db.get('stopAtDayEnd').then(TogglButton.startCheckingDayEnd);
 browser.runtime.onMessage.addListener(TogglButton.newMessage);
 browser.notifications.onClosed.addListener(TogglButton.onNotificationClosed);
 browser.notifications.onClicked.addListener(TogglButton.onNotificationClicked);
 if (!FF) {
   // not supported in FF
-  browser.notifications.onButtonClicked.addListener(
-    TogglButton.notificationBtnClick
-  );
+  browser.notifications.onButtonClicked.addListener(TogglButton.notificationBtnClick);
 }
 browser.windows.onCreated.addListener(TogglButton.startAutomatically);
-browser.windows.getAll(null).then(function (windows) {
+browser.windows.getAll().then(function (windows) {
   openWindowsCount = windows.length;
 });
-browser.windows.onCreated.addListener(function (window) {
+browser.windows.onCreated.addListener(function () {
   openWindowsCount++;
 });
 browser.windows.onRemoved.addListener(TogglButton.stopTrackingOnBrowserClosed);
+
 window.onbeforeunload = function () {
   db.get('stopAutomatically')
     .then((stopAutomatically) => {
