@@ -3,11 +3,8 @@ import TogglOrigins from './origins';
 const browser = require('webextension-polyfill');
 
 let TogglButton = browser.extension.getBackgroundPage().TogglButton;
-
 const ga = browser.extension.getBackgroundPage().ga;
-
 const db = browser.extension.getBackgroundPage().db;
-
 const FF = navigator.userAgent.indexOf('Chrome') === -1;
 
 const replaceContent = function (parentSelector, html) {
@@ -420,16 +417,17 @@ const Settings = {
     const domain = '*://' + Settings.$newPermission.value + '/';
     const permission = { origins: [domain] };
 
-    browser.permissions.request(permission).then(function (result) {
-      if (result) {
-        db.setOrigin(Settings.$newPermission.value, o.value);
-        Settings.$newPermission.value = '';
-      }
-      Settings.loadSitesIntoList();
-      if (result) {
-        document.location.hash = domain;
-      }
-    });
+    browser.permissions.request(permission)
+      .then(function (result) {
+        if (result) {
+          db.setOrigin(Settings.$newPermission.value, o.value);
+          Settings.$newPermission.value = '';
+        }
+        Settings.loadSitesIntoList();
+        if (result) {
+          document.location.hash = domain;
+        }
+      });
   },
 
   removeCustomOrigin: function (e) {
@@ -544,7 +542,6 @@ const Settings = {
           skip = false;
         }
       } catch (e) {
-        console.error(e);
         browser.runtime.sendMessage({
           type: 'error',
           stack: e.stack,
