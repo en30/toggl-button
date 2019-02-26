@@ -99,7 +99,6 @@ window.PopUp = {
   sendMessage: function (request) {
     return browser.runtime.sendMessage(request)
       .then(async function (response) {
-        console.log('popup response', response);
         if (!response) {
           return;
         }
