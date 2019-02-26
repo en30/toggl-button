@@ -109,55 +109,61 @@ window.togglbutton = {
   fullPageHeight: getFullPageHeight(),
   fullVersion: 'TogglButton',
   render: function (selector, opts, renderer, mutationSelector) {
-    browser.runtime.sendMessage({ type: 'activate' }).then(function (response) {
-      console.log('Activate response', response);
-      if (response.success) {
-        try {
-          togglbutton.user = response.user;
-          togglbutton.entries = response.user.time_entries;
-          togglbutton.projects = response.user.projectMap;
-          togglbutton.fullVersion = response.version;
-          togglbutton.duration_format = response.user.duration_format;
-          if (opts.observe) {
-            let debouncer = null;
-            const observer = new MutationObserver(function (mutations) {
-              // If mutationSelector is defined, render the start timer link only when an element
-              // matching the selector changes.
-              // Multiple selectors can be used by comma separating them.
-              // mutationSelector = mutationSelector ? `${mutationSelector},*:not(.toggl-button)` : '*:not(.toggl-button)';
-              if (mutationSelector) {
-                const matches = mutations.filter(function (mutation) {
-                  return mutation.target.matches(mutationSelector);
-                });
-                if (!matches.length) {
-                  return;
+    browser.runtime.sendMessage({ type: 'activate' })
+      .then(function (response) {
+        if (response.success) {
+          try {
+            togglbutton.user = response.user;
+            togglbutton.entries = response.user.time_entries;
+            togglbutton.projects = response.user.projectMap;
+            togglbutton.fullVersion = response.version;
+            togglbutton.duration_format = response.user.duration_format;
+            if (opts.observe) {
+              let debouncer = null;
+              const observer = new MutationObserver(function (mutations) {
+                // If mutationSelector is defined, render the start timer link only when an element
+                // matching the selector changes.
+                // Multiple selectors can be used by comma separating them.
+                // mutationSelector = mutationSelector ? `${mutationSelector},*:not(.toggl-button)` : '*:not(.toggl-button)';
+                if (mutationSelector) {
+                  const matches = mutations.filter(function (mutation) {
+                    return mutation.target.matches(mutationSelector);
+                  });
+                  if (!matches.length) {
+                    return;
+                  }
                 }
-              }
-              if (opts.debounceInterval > 0) {
-                if (debouncer) {
-                  clearTimeout(debouncer);
-                }
-                debouncer = setTimeout(function () {
+                if (opts.debounceInterval > 0) {
+                  if (debouncer) {
+                    clearTimeout(debouncer);
+                  }
+                  debouncer = setTimeout(function () {
+                    togglbutton.renderTo(selector, renderer);
+                  }, opts.debounceInterval);
+                } else {
                   togglbutton.renderTo(selector, renderer);
-                }, opts.debounceInterval);
-              } else {
-                togglbutton.renderTo(selector, renderer);
-              }
+                }
+              });
+              const observeTarget = opts.observeTarget || document;
+              observer.observe(observeTarget, { childList: true, subtree: true });
+            }
+            togglbutton.renderTo(selector, renderer);
+          } catch (e) {
+            browser.runtime.sendMessage({
+              type: 'error',
+              stack: e.stack,
+              category: 'Content'
             });
-            const observeTarget = opts.observeTarget || document;
-            observer.observe(observeTarget, { childList: true, subtree: true });
           }
-          togglbutton.renderTo(selector, renderer);
-        } catch (e) {
-          console.log('ACTIVATE ERROR', e);
-          browser.runtime.sendMessage({
-            type: 'error',
-            stack: e.stack,
-            category: 'Content'
-          });
         }
-      }
-    }).catch(console.error);
+      })
+      .catch((e) => {
+        browser.runtime.sendMessage({
+          type: 'error',
+          stack: e.stack || null,
+          category: 'Content'
+        });
+      });
   },
 
   renderTo: function (selector, renderer) {
@@ -397,10 +403,10 @@ window.togglbutton = {
       if (!link.classList.contains('min')) {
         link.textContent = 'Start timer';
       }
-      browser.runtime.sendMessage(
-        { type: 'stop', respond: true })
-        .then(togglbutton.addEditForm
-        );
+      browser.runtime
+        .sendMessage({ type: 'stop', respond: true })
+        .then(togglbutton.addEditForm);
+
       closeForm();
       return false;
     });
@@ -497,7 +503,9 @@ window.togglbutton = {
         };
       }
       togglbutton.element = e.target;
-      browser.runtime.sendMessage(opts).then(togglbutton.addEditForm);
+      browser.runtime
+        .sendMessage(opts)
+        .then(togglbutton.addEditForm);
 
       return false;
     });
@@ -508,9 +516,10 @@ window.togglbutton = {
   // Query active timer entry, and set it to active.
   queryAndUpdateTimerLink: function () {
     // new button created - set state
-    browser.runtime.sendMessage({ type: 'currentEntry' }).then(function (response) {
-      togglbutton.updateTimerLink(response.currentEntry);
-    });
+    browser.runtime.sendMessage({ type: 'currentEntry' })
+      .then(function (response) {
+        togglbutton.updateTimerLink(response.currentEntry);
+      });
   },
 
   // Make button corresponding to 'entry' active, if any. ; otherwise inactive.
