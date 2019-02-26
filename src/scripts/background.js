@@ -1241,8 +1241,8 @@ window.TogglButton = {
     let domain;
     chrome.tabs.query(
       { active: true, currentWindow: true },
-      filterTabs(function (tabs) {
-        domain = TogglButton.extractDomain(tabs[0].url);
+      filterTabs(async function (tabs) {
+        domain = await TogglButton.extractDomain(tabs[0].url);
         if (domain.file) {
           chrome.tabs.reload(tabs[0].id);
         }
@@ -1794,7 +1794,7 @@ window.TogglButton = {
     return true;
   },
 
-  tabUpdated: function (tabId, changeInfo, tab) {
+  tabUpdated: async function (tabId, changeInfo, tab) {
     if (!TogglButton.$user) {
       TogglButton.setBrowserActionBadge();
       return;
@@ -1803,7 +1803,7 @@ window.TogglButton = {
       changeInfo.status === 'complete' &&
       tab.url.indexOf('chrome://') === -1
     ) {
-      const domain = TogglButton.extractDomain(tab.url);
+      const domain = await TogglButton.extractDomain(tab.url);
       const permission = { origins: domain.origins };
 
       if (process.env.DEBUG) {
@@ -1859,7 +1859,7 @@ window.TogglButton = {
     });
   },
 
-  extractDomain: function (url) {
+  extractDomain: async function (url) {
     let domain;
     if (!TogglButton.$user) {
       return false;
@@ -1880,8 +1880,8 @@ window.TogglButton = {
     // find & remove port number
     domain = domain.split(':')[0];
 
-    const file = db.getOriginFileName(domain);
-
+    const file = await db.getOriginFileName(domain);
+    console.log(file, domain);
     return {
       file: file,
       origins: ['*://' + domain + '/*']

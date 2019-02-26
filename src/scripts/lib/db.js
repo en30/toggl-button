@@ -131,8 +131,8 @@ export default class Db {
     return true;
   };
 
-  getOriginFileName (domain) {
-    let origin = this.getOrigin(domain);
+  async getOriginFileName (domain) {
+    let origin = await this.getOrigin(domain);
 
     if (!origin) {
       origin = domain;
@@ -150,6 +150,8 @@ export default class Db {
       }
     }
 
+    console.log(origin, domain, origins, origins[origin]);
+
     const item = origins[origin];
 
     if (item.file) {
@@ -160,12 +162,12 @@ export default class Db {
   }
 
   async getOrigin (origin) {
-    const origins = await this.get(ORIGINS_KEY) || {};
+    const origins = await this.getAllOrigins();
     return origins[origin] || null;
   }
 
   async setOrigin (newOrigin, baseOrigin) {
-    const origins = await this.get(ORIGINS_KEY) || {};
+    const origins = await this.getAllOrigins();
     origins[newOrigin] = baseOrigin;
     this.set(ORIGINS_KEY, {
       ...origins,
@@ -174,14 +176,14 @@ export default class Db {
   }
 
   async removeOrigin (origin) {
-    const origins = await this.get(ORIGINS_KEY) || {};
+    const origins = await this.getAllOrigins();
     delete origins[origin];
     this.set(ORIGINS_KEY, origins);
   }
 
   async getAllOrigins () {
-    const origins = await this.get(ORIGINS_KEY);
-    return origins || {};
+    const origins = await this.get(ORIGINS_KEY, {});
+    return origins;
   }
 
   /**
@@ -227,8 +229,9 @@ export default class Db {
     this.set(this.togglButton.$user.id + '-defaultProjects', null);
   }
 
-  get (setting) {
-    return browser.storage.sync.get([setting])
+  get (setting, defaultValue) {
+    const hasDefaultValue = typeof defaultValue !== 'undefined';
+    return browser.storage.sync.get(hasDefaultValue ? { [setting]: defaultValue } : setting)
       .then((result) => {
         let value = result[setting];
         if (value) {
