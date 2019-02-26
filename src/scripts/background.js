@@ -515,9 +515,8 @@ window.TogglButton = {
             } else {
               error = xhr.responseText;
             }
-            console.log('te', timeEntry, entry);
+
             if (timeEntry.respond) {
-              console.log('SENDING RESPONSE');
               const showPostPopup = await db.get('showPostPopup');
               resolve({
                 success: success,
@@ -1954,7 +1953,6 @@ window.TogglButton = {
     domain = domain.split(':')[0];
 
     const file = await db.getOriginFileName(domain);
-    console.log(file, domain);
     return {
       file: file,
       origins: ['*://' + domain + '/*']

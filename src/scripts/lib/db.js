@@ -60,8 +60,6 @@ export default class Db {
       }
     }
 
-    console.log(origin, domain, origins, origins[origin]);
-
     const item = origins[origin];
 
     if (item.file) {

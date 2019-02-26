@@ -608,7 +608,6 @@ window.togglbutton = {
   },
 
   newMessage: function (request, sender, sendResponse) {
-    console.log('Received message', request);
     if (request.type === 'stop-entry') {
       togglbutton.updateTimerLink();
       togglbutton.entries = request.user.time_entries;
