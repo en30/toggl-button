@@ -88,117 +88,118 @@ window.TogglButton = {
 
   fetchUser: function (token) {
     bugsnagClient.leaveBreadcrumb('Fetching user with related data');
-    TogglButton.ajax('/me?with_related_data=true', {
-      token: token,
-      baseUrl: TogglButton.$ApiV8Url,
-      onLoad: function (xhr) {
-        let resp;
-        const projectMap = {};
-        const clientMap = {};
-        const clientNameMap = {};
-        const tagMap = {};
-        let projectTaskList = null;
-        let entry = null;
+    return new Promise((resolve, reject) => {
+      TogglButton.ajax('/me?with_related_data=true', {
+        token: token,
+        baseUrl: TogglButton.$ApiV8Url,
+        onLoad: function (xhr) {
+          let resp;
+          const projectMap = {};
+          const clientMap = {};
+          const clientNameMap = {};
+          const tagMap = {};
+          let projectTaskList = null;
+          let entry = null;
 
-        try {
-          if (xhr.status === 200) {
-            browser.tabs.query(
-              { active: true, currentWindow: true }).then(
-              filterTabs(function (tabs) {
-                browser.tabs.sendMessage(tabs[0].id, { type: 'sync' });
-              })
-            );
-            resp = JSON.parse(xhr.responseText);
-            if (resp.data.projects) {
-              resp.data.projects.forEach(function (project) {
-                if (project.active && !project.server_deleted_at) {
-                  projectMap[project.name + project.id] = project;
-                }
-              });
-            }
-            if (resp.data.clients) {
-              resp.data.clients.forEach(function (client) {
-                clientMap[client.id] = client;
-                clientNameMap[client.name.toLowerCase() + client.id] = client;
-              });
-            }
-            if (resp.data.tags) {
-              resp.data.tags.forEach(function (tag) {
-                tagMap[tag.name] = tag;
-              });
-            }
-            if (resp.data.tasks) {
-              projectTaskList = {};
-              resp.data.tasks.forEach(function (task) {
-                const pid = task.pid;
-                if (!projectTaskList[pid]) {
-                  projectTaskList[pid] = [];
-                }
-                projectTaskList[pid].push(task);
-              });
-            }
-            if (resp.data.time_entries) {
-              resp.data.time_entries.some(function (timeEntry) {
-                if (timeEntry.duration < 0) {
-                  entry = timeEntry;
-                  return true;
-                }
-                return false;
-              });
-            }
-
-            if (TogglButton.hasWorkspaceBeenRevoked(resp.data.workspaces)) {
-              TogglButton.showRevokedWSView();
-            }
-
-            TogglButton.updateTriggers(entry);
-            localStorage.setItem('projects', JSON.stringify(projectMap));
-            localStorage.setItem('clients', JSON.stringify(clientMap));
-            TogglButton.$user = resp.data;
-            TogglButton.$user.projectMap = projectMap;
-            TogglButton.$user.clientMap = clientMap;
-            TogglButton.$user.clientNameMap = clientNameMap;
-            TogglButton.$user.tagMap = tagMap;
-            TogglButton.$user.projectTaskList = projectTaskList;
-            if (!TogglButton.$user.default_wid) {
-              const defaultWS = TogglButton.$user.workspaces[0];
-              TogglButton.$user.default_wid = defaultWS.id;
-            }
-            localStorage.setItem('userToken', resp.data.api_token);
-            if (TogglButton.$sendResponse !== null) {
-              TogglButton.$sendResponse({ success: xhr.status === 200 });
-              TogglButton.$sendResponse = null;
-            }
-            TogglButton.setBrowserActionBadge();
-            TogglButton.setupSocket();
-            TogglButton.updateBugsnag();
-            TogglButton.handleQueue();
-            TogglButton.setCanSeeBillable();
-            ga.reportOs();
-          } else {
-            bugsnagClient.notify(new Error(`Fetch user failed ${xhr.status}`), {
-              metaData: {
-                status: xhr.status,
-                responseText: xhr.responseText
+          try {
+            if (xhr.status === 200) {
+              browser.tabs.query(
+                { active: true, currentWindow: true }).then(
+                filterTabs(function (tabs) {
+                  browser.tabs.sendMessage(tabs[0].id, { type: 'sync' });
+                })
+              );
+              resp = JSON.parse(xhr.responseText);
+              if (resp.data.projects) {
+                resp.data.projects.forEach(function (project) {
+                  if (project.active && !project.server_deleted_at) {
+                    projectMap[project.name + project.id] = project;
+                  }
+                });
               }
-            });
-            TogglButton.setBrowserActionBadge();
+              if (resp.data.clients) {
+                resp.data.clients.forEach(function (client) {
+                  clientMap[client.id] = client;
+                  clientNameMap[client.name.toLowerCase() + client.id] = client;
+                });
+              }
+              if (resp.data.tags) {
+                resp.data.tags.forEach(function (tag) {
+                  tagMap[tag.name] = tag;
+                });
+              }
+              if (resp.data.tasks) {
+                projectTaskList = {};
+                resp.data.tasks.forEach(function (task) {
+                  const pid = task.pid;
+                  if (!projectTaskList[pid]) {
+                    projectTaskList[pid] = [];
+                  }
+                  projectTaskList[pid].push(task);
+                });
+              }
+              if (resp.data.time_entries) {
+                resp.data.time_entries.some(function (timeEntry) {
+                  if (timeEntry.duration < 0) {
+                    entry = timeEntry;
+                    return true;
+                  }
+                  return false;
+                });
+              }
+
+              if (TogglButton.hasWorkspaceBeenRevoked(resp.data.workspaces)) {
+                TogglButton.showRevokedWSView();
+              }
+
+              TogglButton.updateTriggers(entry);
+              localStorage.setItem('projects', JSON.stringify(projectMap));
+              localStorage.setItem('clients', JSON.stringify(clientMap));
+              TogglButton.$user = resp.data;
+              TogglButton.$user.projectMap = projectMap;
+              TogglButton.$user.clientMap = clientMap;
+              TogglButton.$user.clientNameMap = clientNameMap;
+              TogglButton.$user.tagMap = tagMap;
+              TogglButton.$user.projectTaskList = projectTaskList;
+              if (!TogglButton.$user.default_wid) {
+                const defaultWS = TogglButton.$user.workspaces[0];
+                TogglButton.$user.default_wid = defaultWS.id;
+              }
+              localStorage.setItem('userToken', resp.data.api_token);
+              resolve({ success: xhr.status === 200 });
+              TogglButton.setBrowserActionBadge();
+              TogglButton.setupSocket();
+              TogglButton.updateBugsnag();
+              TogglButton.handleQueue();
+              TogglButton.setCanSeeBillable();
+              ga.reportOs();
+            } else {
+              bugsnagClient.notify(new Error(`Fetch user failed ${xhr.status}`), {
+                metaData: {
+                  status: xhr.status,
+                  responseText: xhr.responseText
+                }
+              });
+              TogglButton.setBrowserActionBadge();
+              resolve({
+                success: false,
+                type: 'login',
+                error: `Fetch user failed ${xhr.status}`
+              });
+            }
+          } catch (e) {
+            report(e);
           }
-        } catch (e) {
-          report(e);
-        }
-      },
-      onError: function (xhr) {
-        TogglButton.setBrowserActionBadge();
-        if (TogglButton.$sendResponse !== null) {
-          TogglButton.$sendResponse({
+        },
+        onError: function (xhr) {
+          TogglButton.setBrowserActionBadge();
+          resolve({
             success: false,
             type: 'login',
             error: 'Connectivity error'
           });
-          TogglButton.$sendResponse = null;
         }
-      }
+      });
     });
   },
 
@@ -992,39 +993,44 @@ window.TogglButton = {
     });
   },
 
-  loginUser: function (request, sendResponse) {
+  loginUser: function (request) {
     let error;
-    TogglButton.ajax('/sessions', {
-      method: 'POST',
-      onLoad: function (xhr) {
-        TogglButton.$sendResponse = sendResponse;
-        if (xhr.status === 200) {
-          TogglButton.queue.push(TogglButton.checkPermissions);
-          TogglButton.fetchUser();
-          TogglButton.refreshPage();
-        } else {
-          if (xhr.status === 403) {
-            error = 'Wrong Email or Password!';
-          }
-          bugsnagClient.notify(new Error(`Login failed (${xhr.status})`), {
-            metaData: {
-              status: xhr.status,
-              responseText: xhr.responseText
+    return new Promise((resolve, reject) => {
+      TogglButton.ajax('/sessions', {
+        method: 'POST',
+        onLoad: function (xhr) {
+          if (xhr.status === 200) {
+            TogglButton.queue.push(TogglButton.checkPermissions);
+            TogglButton.fetchUser()
+              .then((response) => {
+                TogglButton.refreshPage();
+                resolve(response);
+              })
+              .catch(reject);
+          } else {
+            if (xhr.status === 403) {
+              error = 'Wrong Email or Password!';
             }
+            bugsnagClient.notify(new Error(`Login failed (${xhr.status})`), {
+              metaData: {
+                status: xhr.status,
+                responseText: xhr.responseText
+              }
+            });
+            resolve({ success: false, error: error });
+          }
+        },
+        onError: function (xhr) {
+          resolve({
+            success: false,
+            type: 'login'
           });
-          sendResponse({ success: false, error: error });
+        },
+        credentials: {
+          username: request.username,
+          password: request.password
         }
-      },
-      onError: function (xhr) {
-        sendResponse({
-          success: false,
-          type: 'login'
-        });
-      },
-      credentials: {
-        username: request.username,
-        password: request.password
-      }
+      });
     });
   },
 
@@ -1800,7 +1806,6 @@ window.TogglButton = {
           TogglButton.checkDailyUpdate();
           TogglButton.setBrowserActionBadge();
           const project = await db.getDefaultProject();
-          console.log('activating...');
           resolve({
             success: TogglButton.$user !== null,
             user: TogglButton.$user,
@@ -1809,7 +1814,11 @@ window.TogglButton = {
           });
           TogglButton.setNannyTimer();
         } else if (request.type === 'login') {
-          TogglButton.loginUser(request, sendResponse);
+          TogglButton.loginUser(request)
+            .then((response) => {
+              resolve(response);
+            })
+            .catch(() => resolve(undefined));
         } else if (request.type === 'logout') {
           TogglButton.logoutUser(sendResponse);
         } else if (request.type === 'sync') {
