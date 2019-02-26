@@ -1,4 +1,5 @@
 import { ProjectAutoComplete, TagAutoComplete } from './lib/autocomplete';
+const browser = require('webextension-polyfill');
 
 let projectAutocomplete; let tagAutocomplete;
 
@@ -108,7 +109,8 @@ window.togglbutton = {
   fullPageHeight: getFullPageHeight(),
   fullVersion: 'TogglButton',
   render: function (selector, opts, renderer, mutationSelector) {
-    chrome.runtime.sendMessage({ type: 'activate' }, function (response) {
+    browser.runtime.sendMessage({ type: 'activate' }).then(function (response) {
+      console.log('Activate response', response);
       if (response.success) {
         try {
           togglbutton.user = response.user;
@@ -147,14 +149,15 @@ window.togglbutton = {
           }
           togglbutton.renderTo(selector, renderer);
         } catch (e) {
-          chrome.runtime.sendMessage({
+          console.log('ACTIVATE ERROR', e);
+          browser.runtime.sendMessage({
             type: 'error',
             stack: e.stack,
             category: 'Content'
           });
         }
       }
-    });
+    }).catch(console.error);
   },
 
   renderTo: function (selector, renderer) {
@@ -174,7 +177,7 @@ window.togglbutton = {
       }
       togglbutton.queryAndUpdateTimerLink();
     } catch (e) {
-      chrome.runtime.sendMessage({
+      browser.runtime.sendMessage({
         type: 'error',
         stack: e.stack,
         category: 'Content'
@@ -352,7 +355,7 @@ window.togglbutton = {
         billable: billable,
         service: togglbutton.serviceName
       };
-      chrome.runtime.sendMessage(request);
+      browser.runtime.sendMessage(request);
       closeForm();
     };
 
@@ -394,10 +397,10 @@ window.togglbutton = {
       if (!link.classList.contains('min')) {
         link.textContent = 'Start timer';
       }
-      chrome.runtime.sendMessage(
-        { type: 'stop', respond: true },
-        togglbutton.addEditForm
-      );
+      browser.runtime.sendMessage(
+        { type: 'stop', respond: true })
+        .then(togglbutton.addEditForm
+        );
       closeForm();
       return false;
     });
@@ -494,7 +497,7 @@ window.togglbutton = {
         };
       }
       togglbutton.element = e.target;
-      chrome.runtime.sendMessage(opts, togglbutton.addEditForm);
+      browser.runtime.sendMessage(opts).then(togglbutton.addEditForm);
 
       return false;
     });
@@ -504,7 +507,8 @@ window.togglbutton = {
 
   // Query active timer entry, and set it to active.
   queryAndUpdateTimerLink: function () {
-    chrome.runtime.sendMessage({ type: 'currentEntry' }, function (response) {
+    // new button created - set state
+    browser.runtime.sendMessage({ type: 'currentEntry' }).then(function (response) {
       togglbutton.updateTimerLink(response.currentEntry);
     });
   },
@@ -595,6 +599,7 @@ window.togglbutton = {
   },
 
   newMessage: function (request, sender, sendResponse) {
+    console.log('Received message', request);
     if (request.type === 'stop-entry') {
       togglbutton.updateTimerLink();
       togglbutton.entries = request.user.time_entries;
@@ -605,10 +610,11 @@ window.togglbutton = {
         $('#toggl-button-edit-form').remove();
       }
     }
+    return undefined;
   }
 };
 
-chrome.runtime.onMessage.addListener(togglbutton.newMessage);
+browser.runtime.onMessage.addListener(togglbutton.newMessage);
 window.addEventListener('focus', function (e) {
   // update button state
   togglbutton.queryAndUpdateTimerLink();

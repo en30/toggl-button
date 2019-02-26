@@ -1,4 +1,3 @@
-import bugsnagClient from './bugsnag';
 import origins from '../origins';
 const browser = require('webextension-polyfill');
 
@@ -40,96 +39,7 @@ export default class Db {
   constructor (togglButton) {
     this.togglButton = togglButton;
     this.loadAll();
-
-    browser.runtime.onMessage.addListener(this.newMessage);
   }
-
-  async newMessage (request, sender, sendResponse) {
-    try {
-      if (request.type === 'toggle-popup') {
-        this.set('showPostPopup', request.state);
-      } else if (request.type === 'toggle-nanny') {
-        this.updateSetting(
-          'nannyCheckEnabled',
-          request.state,
-          this.togglButton.setNannyTimer
-        );
-      } else if (request.type === 'toggle-nanny-from-to') {
-        const nannyCheckEnabled = await this.get('nannyCheckEnabled');
-        this.updateSetting(
-          'nannyFromTo',
-          request.state,
-          this.togglButton.setNannyTimer,
-          nannyCheckEnabled
-        );
-      } else if (request.type === 'toggle-nanny-interval') {
-        const nannyCheckEnabled = await this.get('nannyCheckEnabled');
-        this.updateSetting(
-          'nannyInterval',
-          Math.max(request.state, 1000),
-          this.togglButton.setNannyTimer,
-          nannyCheckEnabled
-        );
-      } else if (request.type === 'toggle-idle') {
-        this.updateSetting(
-          'idleDetectionEnabled',
-          request.state,
-          this.togglButton.startCheckingUserState
-        );
-      } else if (request.type === 'toggle-pomodoro') {
-        this.set('pomodoroModeEnabled', request.state);
-      } else if (request.type === 'toggle-pomodoro-sound') {
-        this.set('pomodoroSoundEnabled', request.state);
-      } else if (request.type === 'toggle-pomodoro-interval') {
-        this.updateSetting('pomodoroInterval', request.state);
-      } else if (request.type === 'toggle-pomodoro-stop-time') {
-        this.set('pomodoroStopTimeTrackingWhenTimerEnds', request.state);
-      } else if (request.type === 'update-pomodoro-sound-volume') {
-        this.set('pomodoroSoundVolume', request.state);
-      } else if (request.type === 'toggle-right-click-button') {
-        this.updateSetting('showRightClickButton', request.state);
-      } else if (request.type === 'toggle-start-automatically') {
-        this.updateSetting('startAutomatically', request.state);
-      } else if (request.type === 'toggle-stop-automatically') {
-        this.updateSetting('stopAutomatically', request.state);
-      } else if (request.type === 'toggle-stop-at-day-end') {
-        this.updateSetting('stopAtDayEnd', request.state);
-        this.togglButton.startCheckingDayEnd(request.state);
-      } else if (request.type === 'toggle-day-end-time') {
-        this.updateSetting('dayEndTime', request.state);
-      } else if (request.type === 'change-default-project') {
-        this.updateSetting(
-          browser.extension.getBackgroundPage().this.togglButton.$user.id +
-            '-defaultProject',
-          request.state
-        );
-      } else if (request.type === 'change-remember-project-per') {
-        this.updateSetting('rememberProjectPer', request.state);
-        this.resetDefaultProjects();
-      } else if (
-        request.type === 'update-dont-show-permissions' ||
-        request.type === 'update-settings-active-tab'
-      ) {
-        this.updateSetting(request.type.substr(7), request.state);
-      } else if (
-        request.type === 'update-send-usage-statistics'
-      ) {
-        this.updateSetting('sendUsageStatistics', request.state);
-      } else if (
-        request.type === 'update-send-error-reports'
-      ) {
-        this.updateSetting('sendErrorReports', request.state);
-      } else if (
-        request.type === 'update-enable-auto-tagging'
-      ) {
-        this.updateSetting('enableAutoTagging', request.state);
-      }
-    } catch (e) {
-      bugsnagClient.notify(e);
-    }
-
-    return true;
-  };
 
   async getOriginFileName (domain) {
     let origin = await this.getOrigin(domain);

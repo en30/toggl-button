@@ -1,11 +1,12 @@
 import './lib/bugsnag';
 import TogglOrigins from './origins';
+const browser = require('webextension-polyfill');
 
-let TogglButton = chrome.extension.getBackgroundPage().TogglButton;
+let TogglButton = browser.extension.getBackgroundPage().TogglButton;
 
-const ga = chrome.extension.getBackgroundPage().ga;
+const ga = browser.extension.getBackgroundPage().ga;
 
-const db = chrome.extension.getBackgroundPage().db;
+const db = browser.extension.getBackgroundPage().db;
 
 const FF = navigator.userAgent.indexOf('Chrome') === -1;
 
@@ -54,7 +55,7 @@ const Settings = {
 
     try {
       if (!TogglButton) {
-        TogglButton = chrome.extension.getBackgroundPage().TogglButton;
+        TogglButton = browser.extension.getBackgroundPage().TogglButton;
       }
       Settings.setFromTo();
       const nannyInterval = await db.get('nannyInterval');
@@ -139,7 +140,7 @@ const Settings = {
 
       Settings.loadSitesIntoList();
     } catch (e) {
-      chrome.runtime.sendMessage({
+      browser.runtime.sendMessage({
         type: 'error',
         stack: e.stack,
         category: 'Settings'
@@ -242,7 +243,7 @@ const Settings = {
     if (elem !== null) {
       Settings.toggleState(elem, state);
     }
-    chrome.runtime.sendMessage(request);
+    browser.runtime.sendMessage(request);
   },
   saveSetting: function (value, type) {
     Settings.toggleSetting(null, value, type);
@@ -300,7 +301,7 @@ const Settings = {
       replaceContent('#custom-perm-container', customHtml);
 
       // Load permissions list
-      chrome.permissions.getAll(function (results) {
+      browser.permissions.getAll().then(function (results) {
         let key;
 
         try {
@@ -388,7 +389,7 @@ const Settings = {
 
           Settings.enablePermissionEvents();
         } catch (e) {
-          chrome.runtime.sendMessage({
+          browser.runtime.sendMessage({
             type: 'error',
             stack: e.stack,
             category: 'Settings'
@@ -396,7 +397,7 @@ const Settings = {
         }
       });
     } catch (e) {
-      chrome.runtime.sendMessage({
+      browser.runtime.sendMessage({
         type: 'error',
         stack: e.stack,
         category: 'Settings'
@@ -419,7 +420,7 @@ const Settings = {
     const domain = '*://' + Settings.$newPermission.value + '/';
     const permission = { origins: [domain] };
 
-    chrome.permissions.request(permission, function (result) {
+    browser.permissions.request(permission).then(function (result) {
       if (result) {
         db.setOrigin(Settings.$newPermission.value, o.value);
         Settings.$newPermission.value = '';
@@ -444,9 +445,9 @@ const Settings = {
       domain = '*://' + custom + '/';
       permission = { origins: [domain] };
 
-      chrome.permissions.contains(permission, function (allowed) {
+      browser.permissions.contains(permission).then(function (allowed) {
         if (allowed) {
-          chrome.permissions.remove(permission, function (result) {
+          browser.permissions.remove(permission).then(function (result) {
             if (result) {
               removed = true;
               db.removeOrigin(custom);
@@ -479,7 +480,7 @@ const Settings = {
     const permission = { origins: target.getAttribute('data-host').split(',') };
 
     if (target.checked) {
-      chrome.permissions.request(permission, function (result) {
+      browser.permissions.request(permission).then(function (result) {
         if (result) {
           target.parentNode.classList.remove('disabled');
         } else {
@@ -487,9 +488,9 @@ const Settings = {
         }
       });
     } else {
-      chrome.permissions.contains(permission, function (allowed) {
+      browser.permissions.contains(permission).then(function (allowed) {
         if (allowed) {
-          chrome.permissions.remove(permission, function (result) {
+          browser.permissions.remove(permission).then(function (result) {
             if (result) {
               target.parentNode.classList.add('disabled');
             } else {
@@ -508,7 +509,7 @@ const Settings = {
   },
 
   enableAllOrigins: function (e) {
-    chrome.permissions.request(Settings.getAllPermissions(), function (result) {
+    browser.permissions.request(Settings.getAllPermissions()).then(function (result) {
       if (result) {
         Settings.loadSitesIntoList();
       }
@@ -516,7 +517,7 @@ const Settings = {
   },
 
   disableAllOrigins: function (e) {
-    chrome.permissions.getAll(async function (result) {
+    browser.permissions.getAll().then(async function (result) {
       const origins = [];
       let i;
       let key;
@@ -544,14 +545,14 @@ const Settings = {
         }
       } catch (e) {
         console.error(e);
-        chrome.runtime.sendMessage({
+        browser.runtime.sendMessage({
           type: 'error',
           stack: e.stack,
           category: 'Settings'
         });
       }
 
-      chrome.permissions.remove({ origins: origins }, function (result, b) {
+      browser.permissions.remove({ origins: origins }).then(function (result, b) {
         if (result) {
           Settings.loadSitesIntoList();
         }
@@ -875,7 +876,7 @@ document.addEventListener('DOMContentLoaded', async function (e) {
 
     Settings.loadSitesIntoList();
   } catch (err) {
-    chrome.runtime.sendMessage({
+    browser.runtime.sendMessage({
       type: 'error',
       stack: err.stack,
       category: 'Settings'
