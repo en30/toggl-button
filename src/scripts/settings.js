@@ -420,12 +420,14 @@ const Settings = {
     browser.permissions.request(permission)
       .then(function (result) {
         if (result) {
-          db.setOrigin(Settings.$newPermission.value, o.value);
-          Settings.$newPermission.value = '';
-        }
-        Settings.loadSitesIntoList();
-        if (result) {
-          document.location.hash = domain;
+          db.setOrigin(Settings.$newPermission.value, o.value)
+            .then(() => {
+              Settings.$newPermission.value = '';
+              Settings.loadSitesIntoList();
+              document.location.hash = domain;
+            });
+        } else {
+          Settings.loadSitesIntoList();
         }
       });
   },
