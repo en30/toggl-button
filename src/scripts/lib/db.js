@@ -163,7 +163,7 @@ export default class Db {
       })
       .finally(() => {
         if (process.env.DEBUG) {
-          console.info(`Saved setting ${setting} : ${value}`);
+          console.info(`Saved setting ${setting} :`, value);
         }
       });
   }
