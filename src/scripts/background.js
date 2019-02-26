@@ -437,7 +437,7 @@ window.TogglButton = {
     return undefined;
   },
 
-  createTimeEntry: async function (timeEntry, sendResponse) {
+  createTimeEntry: async function (timeEntry) {
     const type = timeEntry.type;
     const start = new Date();
     let defaultProject = await db.getDefaultProject();
@@ -459,11 +459,12 @@ window.TogglButton = {
     }
 
     if (!timeEntry) {
-      sendResponse({
-        success: false,
-        type: 'New Entry'
+      return new Promise((resolve) => {
+        resolve({
+          success: false,
+          type: 'New Entry'
+        });
       });
-      return;
     }
 
     const shouldIncludeTags = (enableAutoTagging || type === 'list-continue' || type === 'resume');
@@ -496,54 +497,54 @@ window.TogglButton = {
       entry.wid = (project && project.wid) || entry.wid;
     }
 
-    TogglButton.ajax('/time_entries', {
-      method: 'POST',
-      payload: entry,
-      baseUrl: TogglButton.$ApiV9Url,
-      onLoad: async function (xhr) {
-        const hasTasks =
+    return new Promise((resolve) => {
+      TogglButton.ajax('/time_entries', {
+        method: 'POST',
+        payload: entry,
+        baseUrl: TogglButton.$ApiV9Url,
+        onLoad: async function (xhr) {
+          const hasTasks =
             !!TogglButton.$user && !!TogglButton.$user.projectTaskList;
 
-        const success = xhr.status === 200;
-        try {
-          if (success) {
-            entry = JSON.parse(xhr.responseText);
-            TogglButton.localEntry = entry;
-            TogglButton.updateTriggers(entry);
-            ga.reportEvent(timeEntry.type, timeEntry.service);
-          } else {
-            error = xhr.responseText;
+          const success = xhr.status === 200;
+          try {
+            if (success) {
+              entry = JSON.parse(xhr.responseText);
+              TogglButton.localEntry = entry;
+              TogglButton.updateTriggers(entry);
+              ga.reportEvent(timeEntry.type, timeEntry.service);
+            } else {
+              error = xhr.responseText;
+            }
+            console.log('te', timeEntry, entry);
+            if (timeEntry.respond) {
+              console.log('SENDING RESPONSE');
+              const showPostPopup = await db.get('showPostPopup');
+              resolve({
+                success: success,
+                type: 'New Entry',
+                entry: entry,
+                showPostPopup: showPostPopup,
+                html: TogglButton.getEditForm(),
+                hasTasks: hasTasks,
+                error: error
+              });
+            } else {
+              resolve({
+                success: true
+              });
+            }
+          } catch (e) {
+            report(e);
           }
-          console.log('te', timeEntry, entry);
-          if (timeEntry.respond) {
-            console.log('SENDING RESPONSE');
-            const showPostPopup = await db.get('showPostPopup');
-            sendResponse({
-              success: success,
-              type: 'New Entry',
-              entry: entry,
-              showPostPopup: showPostPopup,
-              html: TogglButton.getEditForm(),
-              hasTasks: hasTasks,
-              error: error
-            });
-          } else if (sendResponse) {
-            sendResponse({
-              success: true
-            });
-          }
-        } catch (e) {
-          report(e);
-        }
-      },
-      onError: function (xhr) {
-        if (sendResponse) {
-          sendResponse({
+        },
+        onError: function (xhr) {
+          resolve({
             success: false,
             type: 'New Entry'
           });
         }
-      }
+      });
     });
   },
 
@@ -1814,8 +1815,11 @@ window.TogglButton = {
         } else if (request.type === 'sync') {
           TogglButton.fetchUser();
         } else if (request.type === 'timeEntry') {
-          TogglButton.createTimeEntry(request, sendResponse);
-          TogglButton.hideNotification('remind-to-track-time');
+          TogglButton.createTimeEntry(request)
+            .then((response) => {
+              TogglButton.hideNotification('remind-to-track-time');
+              resolve(response);
+            });
         } else if (request.type === 'list-continue') {
           TogglButton.createTimeEntry({ ...request.data, type: request.type }, sendResponse);
           TogglButton.hideNotification('remind-to-track-time');
@@ -1866,6 +1870,8 @@ window.TogglButton = {
           browser.runtime.openOptionsPage();
         } else if (request.type === 'create-workspace') {
           TogglButton.createWorkspace(request, sendResponse);
+        } else {
+          resolve(undefined);
         }
       } catch (e) {
         if (process.env.DEBUG) {
@@ -1874,7 +1880,6 @@ window.TogglButton = {
         report(e);
         resolve(undefined);
       }
-      resolve(undefined);
     });
   },
 
