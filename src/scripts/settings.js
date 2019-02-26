@@ -628,15 +628,15 @@ document.addEventListener('DOMContentLoaded', async function (e) {
     if (
       !dontShowPermissions
     ) {
-      const showPermissionsInfo = await db.get('show-permissions-info') || 0;
+      const showPermissionsInfo = await db.get('show-permissions-info', 0);
       document.querySelector('.guide-container').style.display = 'flex';
       document.querySelector(
-        ".guide > div[data-id='" + showPermissionsInfo + "']"
+        ".guide > div[data-id='" + (showPermissionsInfo || 0) + "']"
       ).style.display =
         'block';
       document
         .querySelector('.guide button')
-        .setAttribute('data-id', db.get('show-permissions-info'));
+        .setAttribute('data-id', showPermissionsInfo || 0);
       db.set('show-permissions-info', 0);
     }
 
@@ -704,7 +704,7 @@ document.addEventListener('DOMContentLoaded', async function (e) {
     });
     Settings.$postPopup.addEventListener('click', async function (e) {
       const showPostPopup = await db.get('showPostPopup');
-      Settings.toggleSetting(e.target, showPostPopup, 'toggle-popup');
+      Settings.toggleSetting(e.target, !showPostPopup, 'toggle-popup');
     });
     Settings.$nanny.addEventListener('click', async function (e) {
       const nannyCheckEnabled = await db.get('nannyCheckEnabled');

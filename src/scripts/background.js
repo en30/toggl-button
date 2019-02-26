@@ -512,13 +512,15 @@ window.TogglButton = {
           } else {
             error = xhr.responseText;
           }
-
+          console.log('te', timeEntry, entry);
           if (timeEntry.respond) {
+            console.log('SENDING RESPONSE');
+            const showPostPopup = await db.get('showPostPopup');
             sendResponse({
               success: success,
               type: 'New Entry',
               entry: entry,
-              showPostPopup: await db.get('showPostPopup'),
+              showPostPopup: showPostPopup,
               html: TogglButton.getEditForm(),
               hasTasks: hasTasks,
               error: error

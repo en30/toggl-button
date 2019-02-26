@@ -233,6 +233,9 @@ export default class Db {
     const hasDefaultValue = typeof defaultValue !== 'undefined';
     return browser.storage.sync.get(hasDefaultValue ? { [setting]: defaultValue } : setting)
       .then((result) => {
+        if (process.env.DEBUG) {
+          console.info(`Retrieved value ${setting}: `, result[setting]);
+        }
         let value = result[setting];
         if (value) {
           // Ensure older version's settings still function if they get saved to sync storage.
@@ -249,6 +252,11 @@ export default class Db {
       .set({ [setting]: value })
       .catch((e) => {
         console.error(`Error attempting to save ${setting};`, e);
+      })
+      .finally(() => {
+        if (process.env.DEBUG) {
+          console.info(`Saved setting ${setting} : ${value}`);
+        }
       });
   }
 
