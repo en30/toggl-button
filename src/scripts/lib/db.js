@@ -102,12 +102,12 @@ export default class Db {
    */
   async setDefaultProject (pid, scope) {
     const userId = this.togglButton.$user.id;
-    const defaultProjects = await this.get(userId + '-defaultProjects');
+    const defaultProjects = await this.get(userId + '-defaultProjects', {});
     if (!scope) {
       return this.set(userId + '-defaultProject', pid);
     }
     defaultProjects[scope] = pid;
-    this.set(userId + '-defaultProjects', JSON.stringify(defaultProjects));
+    this.set(userId + '-defaultProjects', defaultProjects);
   }
 
   /**
