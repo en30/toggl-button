@@ -606,7 +606,7 @@ window.TogglButton = {
   updatePomodoroProgress: function (interval, steps, elapsedTime) {
     let current = 0;
     let intervalCount = 0;
-    return async function () {
+    return function () {
       let key;
       let img;
       const imagePaths = {
@@ -657,20 +657,12 @@ window.TogglButton = {
       intervalCount += interval / steps;
       current = intervalCount / interval + elapsedTime;
 
-      const pomodoroModeEnabled = await db.get('pomodoroModeEnabled');
-      if (pomodoroModeEnabled) {
-        for (key in imagePaths) {
-          if (imagePaths.hasOwnProperty(key)) {
-            img = new Image();
-            img.onload = imageLoaded(key);
-            img.src = imagePaths[key];
-          }
+      for (key in imagePaths) {
+        if (imagePaths.hasOwnProperty(key)) {
+          img = new Image();
+          img.onload = imageLoaded(key);
+          img.src = imagePaths[key];
         }
-      } else {
-        clearInterval(TogglButton.pomodoroProgressTimer);
-        browser.browserAction.setIcon({
-          path: imagePaths
-        });
       }
     };
   },
